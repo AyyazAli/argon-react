@@ -275,9 +275,6 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
               <Text style={[styles.tableHeaderCell, styles.colPrice]}>
                 Unit Price
               </Text>
-              <Text style={[styles.tableHeaderCell, styles.colDisc]}>
-                Disc %
-              </Text>
               <Text style={[styles.tableHeaderCell, styles.colTotal]}>
                 Total
               </Text>
@@ -301,9 +298,6 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
                 </Text>
                 <Text style={[styles.tableCell, styles.colPrice]}>
                   {formatCurrency(item.unitPrice)}
-                </Text>
-                <Text style={[styles.tableCell, styles.colDisc]}>
-                  {item.discountPercent}%
                 </Text>
                 <Text style={[styles.tableCell, styles.colTotal]}>
                   {formatCurrency(item.total)}
@@ -488,9 +482,6 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
               <Text style={[styles.tableHeaderCell, styles.colPrice]}>
                 Unit Price
               </Text>
-              <Text style={[styles.tableHeaderCell, styles.colDisc]}>
-                Disc %
-              </Text>
               <Text style={[styles.tableHeaderCell, styles.colTotal]}>
                 Total
               </Text>
@@ -514,9 +505,6 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
                 </Text>
                 <Text style={[styles.tableCell, styles.colPrice]}>
                   {formatCurrency(item.unitPrice)}
-                </Text>
-                <Text style={[styles.tableCell, styles.colDisc]}>
-                  {item.discountPercent}%
                 </Text>
                 <Text style={[styles.tableCell, styles.colTotal]}>
                   {formatCurrency(item.total)}
