@@ -114,7 +114,7 @@ export function BankAccountsPage() {
       }
       handleCloseDialog()
     } catch (error) {
-      // Error is handled by the hook
+      toast.error(error instanceof Error ? error.message : 'Failed to create/update bank account')
     }
   }
 
@@ -130,7 +130,7 @@ export function BankAccountsPage() {
         setIsDeleteDialogOpen(false)
         setAccountToDelete(null)
       } catch (error) {
-        // Error is handled by the hook
+        toast.error(error instanceof Error ? error.message : 'Failed to delete bank account')
       }
     }
   }

@@ -1,21 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usersApi, type UserInput, type UserUpdateInput } from '@/services'
 import { toast } from 'sonner'
-import type { User } from '@/services/users'
 
 export function useUsers() {
   return useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await usersApi.getUsers()
-      return response.data || []
+      try {
+        const response = await usersApi.getUsers()
+        return response.data || []
+      } catch (error) {
+        console.error('Error fetching users:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch users'
+        toast.error(errorMessage)
+        throw error
+      }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
-    onError: (error: Error) => {
-      console.error('Error fetching users:', error)
-      toast.error(error.message || 'Failed to fetch users')
-    },
   })
 }
 

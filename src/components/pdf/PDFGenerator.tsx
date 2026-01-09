@@ -287,7 +287,7 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
                 key={index}
                 style={[
                   styles.tableRow,
-                  index % 2 === 1 ? styles.tableRowAlt : undefined,
+                  ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
                 ]}
               >
                 <Text style={[styles.tableCell, styles.colName]}>
@@ -500,7 +500,7 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
                 key={index}
                 style={[
                   styles.tableRow,
-                  index % 2 === 1 ? styles.tableRowAlt : undefined,
+                  ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
                 ]}
               >
                 <Text style={[styles.tableCell, styles.colName]}>

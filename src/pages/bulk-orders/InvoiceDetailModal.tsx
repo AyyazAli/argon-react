@@ -17,7 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import type { BulkInvoice, BulkCustomer, BulkQuotation, InvoiceStatus } from '@/types'
-import { X, Clock, User } from 'lucide-react'
+import { Clock, User } from 'lucide-react'
 
 interface InvoiceDetailModalProps {
   open: boolean

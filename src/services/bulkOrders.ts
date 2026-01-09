@@ -7,6 +7,7 @@ import type {
   QuotationStatus,
   BulkInvoice,
   InvoiceInput,
+  InvoiceStatus,
   BulkBankAccount,
   BulkBankAccountInput,
   ApiResponse,
