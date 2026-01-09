@@ -44,7 +44,11 @@ export const router = createHashRouter([
       },
       {
         path: "orders",
-        element: <OrdersPage />,
+        element: (
+          <RoleGuard allowedRoles={["superAdmin", "admin", "opertaionManager"]}>
+            <OrdersPage />
+          </RoleGuard>
+        ),
       },
       {
         path: "bulk-customers",
