@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores'
@@ -16,6 +17,8 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 
@@ -161,6 +164,7 @@ const navGroups: NavGroup[] = [
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { role } = useAuthStore()
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const hasAccess = (roles?: string[]) => {
     if (!roles || roles.length === 0) return true
@@ -169,6 +173,36 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
+  // Auto-expand groups that contain the active route
+  useEffect(() => {
+    const activeGroup = navGroups.find((group) => {
+      if (!hasAccess(group.roles)) return false
+      return group.children.some(
+        (child) => hasAccess(child.roles) && isActive(child.path)
+      )
+    })
+
+    if (activeGroup) {
+      setExpandedGroups((prev) => new Set(prev).add(activeGroup.title))
+    }
+  }, [location.pathname, role])
+
+  const toggleGroup = (groupTitle: string) => {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(groupTitle)) {
+        newSet.delete(groupTitle)
+      } else {
+        newSet.add(groupTitle)
+      }
+      return newSet
+    })
+  }
+
+  const isGroupExpanded = (groupTitle: string) => {
+    return expandedGroups.has(groupTitle)
   }
 
   return (
@@ -210,33 +244,69 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
               if (visibleChildren.length === 0) return null
 
+              const isExpanded = isGroupExpanded(group.title)
+
               return (
                 <div key={group.title} className="space-y-1">
-                  {!isCollapsed && (
-                    <h3 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {group.title}
-                    </h3>
-                  )}
-                  <div className="space-y-1">
-                    {visibleChildren.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={cn(
-                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                          isActive(item.path)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                        )}
-                        title={isCollapsed ? item.title : undefined}
+                  {!isCollapsed ? (
+                    <>
+                      <button
+                        onClick={() => toggleGroup(group.title)}
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       >
-                        <span className={cn(isActive(item.path) && 'text-primary-foreground')}>
-                          {item.icon}
+                        <span className="flex items-center gap-2">
+                          <span className="size-5">{group.icon}</span>
+                          <span>{group.title}</span>
                         </span>
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </Link>
-                    ))}
-                  </div>
+                        {isExpanded ? (
+                          <ChevronUp className="size-4" />
+                        ) : (
+                          <ChevronDown className="size-4" />
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <div className="space-y-1">
+                          {visibleChildren.map((item) => (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className={cn(
+                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                isActive(item.path)
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              <span className={cn(isActive(item.path) && 'text-primary-foreground')}>
+                                {item.icon}
+                              </span>
+                              <span>{item.title}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-1">
+                      {visibleChildren.map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={cn(
+                            'flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                            isActive(item.path)
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                          title={item.title}
+                        >
+                          <span className={cn(isActive(item.path) && 'text-primary-foreground')}>
+                            {item.icon}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
