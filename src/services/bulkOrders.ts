@@ -159,6 +159,18 @@ export const invoicesApi = {
     return response.data
   },
 
+  // Update invoice
+  updateInvoice: async (
+    id: string,
+    data: Partial<InvoiceInput>
+  ): Promise<ApiResponse<BulkInvoice>> => {
+    const response = await api.put<ApiResponse<BulkInvoice>>(
+      `/api/bulk-orders/invoices/${id}`,
+      data
+    )
+    return response.data
+  },
+
   // Update invoice status
   updateInvoiceStatus: async (
     id: string,
@@ -168,6 +180,14 @@ export const invoicesApi = {
     const response = await api.patch<ApiResponse<BulkInvoice>>(
       `/api/bulk-orders/invoices/${id}/status`,
       { status, notes }
+    )
+    return response.data
+  },
+
+  // Delete invoice
+  deleteInvoice: async (id: string): Promise<ApiResponse<null>> => {
+    const response = await api.delete<ApiResponse<null>>(
+      `/api/bulk-orders/invoices/${id}`
     )
     return response.data
   },

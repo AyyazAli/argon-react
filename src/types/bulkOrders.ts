@@ -30,7 +30,7 @@ export interface BulkCustomerInput {
 }
 
 // Quotation Types
-export type QuotationStatus = 'pending' | 'sent' | 'invoice_generated'
+export type QuotationStatus = 'pending' | 'sent' | 'invoice_generated' | 'cancelled'
 
 export interface StatusHistory {
   _id?: string
@@ -50,7 +50,6 @@ export interface QuotationItem {
   description?: string
   quantity: number
   unitPrice: number
-  discountPercent: number
   total: number
 }
 
@@ -89,7 +88,7 @@ export interface QuotationInput {
 }
 
 // Invoice Types
-export type InvoiceStatus = 'sent' | 'pending_payment' | 'payment_received' | 'delivered'
+export type InvoiceStatus = 'sent' | 'pending_payment' | 'payment_received' | 'delivered' | 'cancelled'
 
 export interface InvoiceItem {
   _id?: string
@@ -97,7 +96,6 @@ export interface InvoiceItem {
   description?: string
   quantity: number
   unitPrice: number
-  discountPercent: number
   total: number
 }
 
@@ -114,6 +112,7 @@ export interface BulkInvoice {
   taxPercent: number
   taxAmount: number
   grandTotal: number
+  advanceAmount?: number
   paymentTerms?: string
   dueDate?: string
   notes?: string
@@ -133,6 +132,7 @@ export interface InvoiceInput {
   discountAmount?: number
   deliveryAmount?: number
   taxPercent?: number
+  advanceAmount?: number
   paymentTerms?: string
   dueDate?: string
   notes?: string

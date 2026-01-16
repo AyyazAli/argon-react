@@ -158,7 +158,6 @@ export function QuotationDetailModal({
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Discount %</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -171,7 +170,6 @@ export function QuotationDetailModal({
                       </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell className="text-right">{item.discountPercent}%</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.total)}
                       </TableCell>

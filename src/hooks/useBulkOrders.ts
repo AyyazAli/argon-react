@@ -206,6 +206,22 @@ export function useCreateInvoice() {
   })
 }
 
+export function useUpdateInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InvoiceInput> }) =>
+      invoicesApi.updateInvoice(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.success('Invoice updated successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update invoice')
+    },
+  })
+}
+
 export function useUpdateInvoiceStatus() {
   const queryClient = useQueryClient()
 
@@ -218,6 +234,21 @@ export function useUpdateInvoiceStatus() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update status')
+    },
+  })
+}
+
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => invoicesApi.deleteInvoice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.success('Invoice deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete invoice')
     },
   })
 }
