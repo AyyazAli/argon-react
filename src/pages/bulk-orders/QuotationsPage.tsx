@@ -422,7 +422,9 @@ export function QuotationsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {QUOTATION_STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
+                    <SelectItem key={status.value} value={status.value} disabled={
+                      status.value === 'invoice_generated'
+                    }>
                       {status.label}
                     </SelectItem>
                   ))}
