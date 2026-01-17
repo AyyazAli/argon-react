@@ -93,11 +93,10 @@ const styles = StyleSheet.create({
   tableCell: {
     fontSize: 9,
   },
-  colName: { width: "25%" },
-  colDesc: { width: "25%" },
+  colName: { width: "30%" },
+  colDesc: { width: "30%" },
   colQty: { width: "10%", textAlign: "right" },
   colPrice: { width: "15%", textAlign: "right" },
-  colDisc: { width: "10%", textAlign: "right" },
   colTotal: { width: "15%", textAlign: "right" },
   totalsSection: {
     marginTop: 20,
@@ -545,12 +544,28 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
               </Text>
             </View>
           )}
-          <View style={styles.grandTotalRow}>
-            <Text style={styles.grandTotalLabel}>Amount Due:</Text>
-            <Text style={styles.grandTotalValue}>
+          <View style={styles.totalRow}>
+            <Text style={{ color: "#e74c3c" }}>Grand Total:</Text>
+            <Text style={{ color: "#e74c3c" }}>
               {formatCurrency(invoice.grandTotal)}
             </Text>
           </View>
+          {invoice.advanceAmount && invoice.advanceAmount > 0 && (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={{ color: "#d97706" }}>Advance Amount:</Text>
+                <Text style={{ color: "#d97706" }}>
+                  -{formatCurrency(invoice.advanceAmount)}
+                </Text>
+              </View>
+              <View style={styles.grandTotalRow}>
+                <Text style={styles.grandTotalLabel}>Amount to Pay:</Text>
+                <Text style={styles.grandTotalValue}>
+                  {formatCurrency(invoice.grandTotal - invoice.advanceAmount)}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Bank Accounts */}

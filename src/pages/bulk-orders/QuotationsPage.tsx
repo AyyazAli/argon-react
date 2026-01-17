@@ -64,11 +64,13 @@ import {
 } from 'lucide-react'
 import { pdf } from '@react-pdf/renderer'
 import { saveAs } from 'file-saver'
+import { useAuthStore } from '@/stores'
 
 const QUOTATION_STATUSES: { value: QuotationStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
   { value: 'sent', label: 'Sent' },
   { value: 'invoice_generated', label: 'Invoice Generated' },
+  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 const getStatusColor = (status: QuotationStatus) => {
@@ -79,6 +81,8 @@ const getStatusColor = (status: QuotationStatus) => {
       return 'bg-blue-50 text-blue-700 border border-blue-200'
     case 'invoice_generated':
       return 'bg-violet-50 text-violet-700 border border-violet-200'
+    case 'cancelled':
+      return 'bg-red-50 text-red-700 border border-red-200'
     default:
       return 'bg-gray-50 text-gray-700 border border-gray-200'
   }
@@ -86,13 +90,17 @@ const getStatusColor = (status: QuotationStatus) => {
 
 export function QuotationsPage() {
   const { data: quotations, isLoading } = useQuotations()
+  const { role } = useAuthStore()
   const createQuotation = useCreateQuotation()
   const updateQuotation = useUpdateQuotation()
   const updateStatus = useUpdateQuotationStatus()
   const deleteQuotation = useDeleteQuotation()
 
+  const isAdmin = role === 'admin' || role === 'superAdmin'
+
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [salesPersonFilter, setSalesPersonFilter] = useState<string>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
@@ -103,6 +111,18 @@ export function QuotationsPage() {
   const [selectedQuotation, setSelectedQuotation] = useState<BulkQuotation | null>(null)
   const [newStatus, setNewStatus] = useState<QuotationStatus>('pending')
   const [statusNotes, setStatusNotes] = useState('')
+
+  // Get unique sales persons from quotations
+  const salesPersons = useMemo(() => {
+    if (!quotations) return []
+    const uniquePersons = new Map<string, { _id: string; name: string; email: string }>()
+    quotations.forEach((quotation) => {
+      if (quotation.createdBy) {
+        uniquePersons.set(quotation.createdBy._id, quotation.createdBy)
+      }
+    })
+    return Array.from(uniquePersons.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [quotations])
 
   const filteredQuotations = useMemo(() => {
     if (!quotations) return []
@@ -118,9 +138,13 @@ export function QuotationsPage() {
       const matchesStatus =
         statusFilter === 'all' || quotation.status === statusFilter
 
-      return matchesSearch && matchesStatus
+      const matchesSalesPerson =
+        salesPersonFilter === 'all' ||
+        (quotation.createdBy && quotation.createdBy._id === salesPersonFilter)
+
+      return matchesSearch && matchesStatus && matchesSalesPerson
     })
-  }, [quotations, searchQuery, statusFilter])
+  }, [quotations, searchQuery, statusFilter, salesPersonFilter])
 
   const handleOpenForm = (quotation?: BulkQuotation) => {
     if (quotation) {
@@ -192,6 +216,10 @@ export function QuotationsPage() {
     return customer?.companyName || 'Unknown'
   }
 
+  const getSalesPersonName = (quotation: BulkQuotation) => {
+    return quotation.createdBy?.name || 'Unknown'
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -234,6 +262,19 @@ export function QuotationsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={salesPersonFilter} onValueChange={setSalesPersonFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by sales person" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sales Persons</SelectItem>
+                {salesPersons.map((person) => (
+                  <SelectItem key={person._id} value={person._id}>
+                    {person.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -261,6 +302,7 @@ export function QuotationsPage() {
                     <TableHead>Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Valid Until</TableHead>
+                    <TableHead>Sales Person</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -269,7 +311,7 @@ export function QuotationsPage() {
                 <TableBody>
                   {filteredQuotations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                         No quotations found
                       </TableCell>
                     </TableRow>
@@ -289,6 +331,7 @@ export function QuotationsPage() {
                             ? formatDate(quotation.validUntil)
                             : '-'}
                         </TableCell>
+                        <TableCell>{getSalesPersonName(quotation)}</TableCell>
                         <TableCell>{formatDate(quotation.dateCreated)}</TableCell>
                         <TableCell>
                           <Select
@@ -363,7 +406,7 @@ export function QuotationsPage() {
                                   Create Invoice
                                 </DropdownMenuItem>
                               )}
-                              {quotation.status === 'pending' && (
+                              {isAdmin && quotation.status === 'pending' && (
                                 <DropdownMenuItem
                                   onClick={() => openDeleteDialog(quotation)}
                                   className="text-destructive focus:text-destructive"

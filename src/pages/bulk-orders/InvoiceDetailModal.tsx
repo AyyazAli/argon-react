@@ -171,7 +171,6 @@ export function InvoiceDetailModal({
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Discount %</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -184,7 +183,6 @@ export function InvoiceDetailModal({
                       </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell className="text-right">{item.discountPercent}%</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.total)}
                       </TableCell>
@@ -225,6 +223,19 @@ export function InvoiceDetailModal({
                 <span>Grand Total:</span>
                 <span>{formatCurrency(invoice.grandTotal)}</span>
               </div>
+              {invoice.advanceAmount && invoice.advanceAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-amber-700">
+                    <span>Advance Amount:</span>
+                    <span className="font-medium">- {formatCurrency(invoice.advanceAmount)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg font-bold text-primary">
+                    <span>Amount to Pay:</span>
+                    <span>{formatCurrency(invoice.grandTotal - invoice.advanceAmount)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
