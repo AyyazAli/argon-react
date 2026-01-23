@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 
@@ -143,6 +144,12 @@ const navGroups: NavGroup[] = [
         title: 'Bank Accounts',
         icon: <Building2 className="size-5" />,
         roles: ['superAdmin', 'admin'],
+      },
+      {
+        path: '/bulk-reports',
+        title: 'Reports',
+        icon: <BarChart3 className="size-5" />,
+        roles: ['superAdmin', 'admin', 'bulkOrder'],
       },
     ],
   },
