@@ -12,8 +12,6 @@ import type {
   InvoiceReportData,
   SalesPersonPerformance,
   ReportFilters,
-  BulkQuotation,
-  BulkInvoice,
   BulkCustomer,
 } from '@/types'
 
@@ -304,7 +302,7 @@ const ReportPDF = ({
               ([status, data], index) => (
                 <View
                   key={status}
-                  style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
+                  style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
                 >
                   <View style={styles.tableCell}>
                     <Text style={[styles.statusBadge, getStatusStyle(status)]}>
@@ -336,7 +334,7 @@ const ReportPDF = ({
               ([status, data], index) => (
                 <View
                   key={status}
-                  style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
+                  style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
                 >
                   <View style={styles.tableCell}>
                     <Text style={[styles.statusBadge, getStatusStyle(status)]}>
@@ -394,7 +392,7 @@ const ReportPDF = ({
               {salesPersonData.map((sp, index) => (
                 <View
                   key={sp.userId}
-                  style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
+                  style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
                 >
                   <Text style={[styles.tableCell, { flex: 2 }]}>{sp.name}</Text>
                   <Text style={[styles.tableCell, styles.tableCellRight]}>
@@ -453,7 +451,7 @@ const ReportPDF = ({
               return (
                 <View
                   key={q._id}
-                  style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
+                  style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
                 >
                   <Text style={[styles.tableCell, { flex: 1.2 }]}>
                     {q.quotationNumber}
@@ -518,7 +516,7 @@ const ReportPDF = ({
               return (
                 <View
                   key={inv._id}
-                  style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
+                  style={index % 2 === 1 ? [styles.tableRow, styles.tableRowAlt] : styles.tableRow}
                 >
                   <Text style={[styles.tableCell, { flex: 1.2 }]}>
                     {inv.invoiceNumber}

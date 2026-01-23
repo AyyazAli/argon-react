@@ -18,7 +18,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   ChevronDown,
-  ChevronUp,
   ChevronRight,
   FileText,
   Receipt,

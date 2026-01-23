@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useAllReports, useSummaryReports } from '@/hooks'
-import { Button, Card, CardContent, Skeleton } from '@/components/ui'
+import { useAllReports } from '@/hooks'
+import { Button, Card, CardContent } from '@/components/ui'
 import {
   ReportFilters,
   SummaryCards,
@@ -123,12 +123,12 @@ export function ReportsPage() {
     summaryReports.isError
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-slate-50 to-white">
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg">
+            <div className="p-3 bg-linear-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg">
               <BarChart3 className="h-8 w-8 text-white" />
             </div>
             <div>
