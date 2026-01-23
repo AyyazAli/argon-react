@@ -21,6 +21,7 @@ import {
   BulkCustomersPage,
   QuotationsPage,
   InvoicesPage,
+  ReportsPage,
 } from "@/pages/bulk-orders";
 import { BankAccountsPage } from "@/pages/bulk-orders/BankAccountsPage";
 import { UsersPage } from "@/pages/users";
@@ -79,6 +80,14 @@ export const router = createHashRouter([
         element: (
           <RoleGuard allowedRoles={["superAdmin", "admin", "bulkOrder"]}>
             <InvoicesPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "bulk-reports",
+        element: (
+          <RoleGuard allowedRoles={["superAdmin", "admin", "bulkOrder"]}>
+            <ReportsPage />
           </RoleGuard>
         ),
       },
