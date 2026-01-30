@@ -161,8 +161,8 @@ export const accountingApi = {
   getLiabilities: async (params?: {
     vendor?: string
     status?: string
-  }): Promise<ApiResponse<Liability[]>> => {
-    const response = await api.get<ApiResponse<Liability[]>>(
+  }): Promise<{ message: string; data: { liabilities: Liability[]; max: number } }> => {
+    const response = await api.get<{ message: string; data: { liabilities: Liability[]; max: number } }>(
       '/api/argon/ledger/liability',
       { params }
     )
@@ -180,6 +180,118 @@ export const accountingApi = {
       '/api/argon/ledger/liability',
       data
     )
+    return response.data
+  },
+
+  // Delete operations (admin/superAdmin only)
+  deleteAccount: async (id: string): Promise<ApiResponse<Account>> => {
+    const response = await api.delete<ApiResponse<Account>>(
+      `/api/argon/ledger/account/${id}`
+    )
+    return response.data
+  },
+
+  deleteCategory: async (id: string): Promise<ApiResponse<Category>> => {
+    const response = await api.delete<ApiResponse<Category>>(
+      `/api/argon/ledger/category/${id}`
+    )
+    return response.data
+  },
+
+  deleteTransaction: async (id: string): Promise<ApiResponse<Transaction>> => {
+    const response = await api.delete<ApiResponse<Transaction>>(
+      `/api/argon/ledger/transaction/${id}`
+    )
+    return response.data
+  },
+
+  deleteVendor: async (id: string): Promise<ApiResponse<Vendor>> => {
+    const response = await api.delete<ApiResponse<Vendor>>(
+      `/api/argon/ledger/vendor/${id}`
+    )
+    return response.data
+  },
+
+  deleteLiability: async (id: string): Promise<ApiResponse<Liability>> => {
+    const response = await api.delete<ApiResponse<Liability>>(
+      `/api/argon/ledger/liability/${id}`
+    )
+    return response.data
+  },
+
+  // Reports
+  getReportSummary: async (params?: {
+    from?: string
+    to?: string
+  }): Promise<ApiResponse<{
+    income: { total: number; count: number }
+    expense: { total: number; count: number }
+    netIncome: number
+    totalBalance: number
+    totalPayables: number
+    accountCount: number
+    vendorCount: number
+  }>> => {
+    const response = await api.get('/api/argon/ledger/reports/summary', { params })
+    return response.data
+  },
+
+  getReportIncomeExpense: async (params?: {
+    from?: string
+    to?: string
+    groupBy?: 'day' | 'week' | 'month'
+  }): Promise<ApiResponse<Array<{
+    period: string
+    income: number
+    expense: number
+    net: number
+    incomeCount: number
+    expenseCount: number
+  }>>> => {
+    const response = await api.get('/api/argon/ledger/reports/income-expense', { params })
+    return response.data
+  },
+
+  getReportByCategory: async (params?: {
+    from?: string
+    to?: string
+  }): Promise<ApiResponse<Array<{
+    categoryId: string
+    categoryName: string
+    categoryType: string
+    total: number
+    count: number
+  }>>> => {
+    const response = await api.get('/api/argon/ledger/reports/by-category', { params })
+    return response.data
+  },
+
+  getReportByAccount: async (params?: {
+    from?: string
+    to?: string
+  }): Promise<ApiResponse<Array<{
+    accountId: string
+    accountName: string
+    currentBalance: number
+    periodIncome: number
+    periodExpense: number
+    transactionCount: number
+  }>>> => {
+    const response = await api.get('/api/argon/ledger/reports/by-account', { params })
+    return response.data
+  },
+
+  getReportVendorPayables: async (): Promise<ApiResponse<{
+    vendors: Array<{
+      _id: string
+      name: string
+      description?: string
+      amountOwed: number
+    }>
+    totalPayables: number
+    vendorCount: number
+  }>> => {
+    const response = await api.get('/api/argon/ledger/reports/vendor-payables')
     return response.data
   },
 }

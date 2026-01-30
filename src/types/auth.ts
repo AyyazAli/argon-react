@@ -1,7 +1,7 @@
 export interface User {
   _id: string
   email: string
-  role: 'user' | 'admin' | 'superAdmin'
+  role: 'user' | 'admin' | 'superAdmin' | 'financeManager'
   business: string
 }
 

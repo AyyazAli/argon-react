@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useLiabilities, useCreateLiability, useVendors } from '@/hooks'
+import { useLiabilities, useCreateLiability, useVendors, useDeleteLiability } from '@/hooks'
+import { useAuthStore } from '@/stores'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Card,
@@ -29,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -37,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, FileWarning, AlertTriangle } from 'lucide-react'
+import { Plus, FileWarning, AlertTriangle, Trash2 } from 'lucide-react'
 
 const liabilitySchema = z.object({
   vendor: z.string().min(1, 'Vendor is required'),
@@ -51,7 +53,29 @@ export function LiabilityPage() {
   const { data: liabilities, isLoading } = useLiabilities()
   const { data: vendors } = useVendors()
   const createLiability = useCreateLiability()
+  const deleteLiability = useDeleteLiability()
+  const { role } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [liabilityToDelete, setLiabilityToDelete] = useState<string | null>(null)
+
+  const canDelete = role === 'admin' || role === 'superAdmin'
+
+  const handleDeleteClick = (id: string) => {
+    setLiabilityToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (liabilityToDelete) {
+      deleteLiability.mutate(liabilityToDelete, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false)
+          setLiabilityToDelete(null)
+        },
+      })
+    }
+  }
 
   const {
     register,
@@ -158,19 +182,24 @@ export function LiabilityPage() {
                     <TableHead>Due Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
+                    {canDelete && <TableHead className="w-[80px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {liabilities?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-12 text-muted-foreground">
                         No liabilities found
                       </TableCell>
                     </TableRow>
                   ) : (
                     liabilities?.map((liability) => (
                       <TableRow key={liability._id}>
-                        <TableCell className="font-medium">{liability.vendor}</TableCell>
+                        <TableCell className="font-medium">
+                          {typeof liability.vendor === 'object' && liability.vendor !== null
+                            ? (liability.vendor as { name: string }).name
+                            : liability.vendor}
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(liability.amount)}
                         </TableCell>
@@ -182,6 +211,18 @@ export function LiabilityPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(liability.status)}</TableCell>
                         <TableCell>{formatDate(liability.createdAt)}</TableCell>
+                        {canDelete && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(liability._id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -207,7 +248,7 @@ export function LiabilityPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {vendors?.map((vendor) => (
-                    <SelectItem key={vendor._id} value={vendor.name}>
+                    <SelectItem key={vendor._id} value={vendor._id}>
                       {vendor.name}
                     </SelectItem>
                   ))}
@@ -259,6 +300,30 @@ export function LiabilityPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Liability</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this liability record? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteLiability.isPending}
+            >
+              {deleteLiability.isPending ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

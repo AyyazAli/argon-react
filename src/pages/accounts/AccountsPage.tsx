@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useAccounts, useCreateAccount } from '@/hooks'
+import { useAccounts, useCreateAccount, useDeleteAccount } from '@/hooks'
+import { useAuthStore } from '@/stores'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Card,
@@ -28,8 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus, Wallet } from 'lucide-react'
+import { Plus, Wallet, Trash2 } from 'lucide-react'
 
 const accountSchema = z.object({
   accountName: z.string().min(1, 'Account name is required'),
@@ -40,7 +42,29 @@ const accountSchema = z.object({
 export function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts()
   const createAccount = useCreateAccount()
+  const deleteAccount = useDeleteAccount()
+  const { role } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
+
+  const canDelete = role === 'admin' || role === 'superAdmin'
+
+  const handleDeleteClick = (id: string) => {
+    setAccountToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (accountToDelete) {
+      deleteAccount.mutate(accountToDelete, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false)
+          setAccountToDelete(null)
+        },
+      })
+    }
+  }
 
   const {
     register,
@@ -111,12 +135,13 @@ export function AccountsPage() {
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Created</TableHead>
+                    {canDelete && <TableHead className="w-[80px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {accounts?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={canDelete ? 5 : 4} className="text-center py-12 text-muted-foreground">
                         No accounts found
                       </TableCell>
                     </TableRow>
@@ -131,6 +156,18 @@ export function AccountsPage() {
                           {formatCurrency(account.balance)}
                         </TableCell>
                         <TableCell>{formatDate(account.createdAt)}</TableCell>
+                        {canDelete && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(account._id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -175,6 +212,30 @@ export function AccountsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this account? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteAccount.isPending}
+            >
+              {deleteAccount.isPending ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

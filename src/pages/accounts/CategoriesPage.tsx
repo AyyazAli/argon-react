@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useCategories, useCreateCategory } from '@/hooks'
+import { useCategories, useCreateCategory, useDeleteCategory } from '@/hooks'
+import { useAuthStore } from '@/stores'
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -36,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, Trash2 } from 'lucide-react'
 
 const categorySchema = z.object({
   categoryName: z.string().min(1, 'Category name is required'),
@@ -49,7 +51,29 @@ type CategoryFormData = z.infer<typeof categorySchema>
 export function CategoriesPage() {
   const { data: categories, isLoading } = useCategories()
   const createCategory = useCreateCategory()
+  const deleteCategory = useDeleteCategory()
+  const { role } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
+
+  const canDelete = role === 'admin' || role === 'superAdmin'
+
+  const handleDeleteClick = (id: string) => {
+    setCategoryToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (categoryToDelete) {
+      deleteCategory.mutate(categoryToDelete, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false)
+          setCategoryToDelete(null)
+        },
+      })
+    }
+  }
 
   const {
     register,
@@ -139,12 +163,13 @@ export function CategoriesPage() {
                     <TableHead>Category Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Description</TableHead>
+                    {canDelete && <TableHead className="w-[80px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {categories?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={canDelete ? 4 : 3} className="text-center py-12 text-muted-foreground">
                         No categories found
                       </TableCell>
                     </TableRow>
@@ -163,6 +188,18 @@ export function CategoriesPage() {
                         <TableCell className="text-muted-foreground">
                           {category.desc || '-'}
                         </TableCell>
+                        {canDelete && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(category._id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -216,6 +253,30 @@ export function CategoriesPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Category</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this category? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteCategory.isPending}
+            >
+              {deleteCategory.isPending ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

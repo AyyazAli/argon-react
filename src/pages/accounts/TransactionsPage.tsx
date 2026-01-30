@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useTransactions, useCreateTransaction, useAccounts, useCategories } from '@/hooks'
+import { useTransactions, useCreateTransaction, useAccounts, useCategories, useDeleteTransaction } from '@/hooks'
+import { useAuthStore } from '@/stores'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import {
   Card,
@@ -29,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -37,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 
 const transactionSchema = z.object({
   balance: z.string().transform((val) => Number(val) || 0),
@@ -60,7 +62,29 @@ export function TransactionsPage() {
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const createTransaction = useCreateTransaction()
+  const deleteTransaction = useDeleteTransaction()
+  const { role } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+
+  const canDelete = role === 'admin' || role === 'superAdmin'
+
+  const handleDeleteClick = (id: string) => {
+    setTransactionToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (transactionToDelete) {
+      deleteTransaction.mutate(transactionToDelete, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false)
+          setTransactionToDelete(null)
+        },
+      })
+    }
+  }
 
   const {
     register,
@@ -146,12 +170,13 @@ export function TransactionsPage() {
                       <TableHead>Description</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
+                      {canDelete && <TableHead className="w-[80px]">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {!transactionData?.transaction?.length ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={canDelete ? 8 : 7} className="text-center py-12 text-muted-foreground">
                           No transactions found
                         </TableCell>
                       </TableRow>
@@ -189,6 +214,18 @@ export function TransactionsPage() {
                           <TableCell className="text-right font-medium">
                             {formatCurrency(tx.balance)}
                           </TableCell>
+                          {canDelete && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(tx._id)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     )}
@@ -312,6 +349,30 @@ export function TransactionsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Transaction</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this transaction? This will reverse its effect on the account balance. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteTransaction.isPending}
+            >
+              {deleteTransaction.isPending ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

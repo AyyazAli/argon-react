@@ -148,7 +148,7 @@ export function useLiabilities(params?: { vendor?: string; status?: string }) {
     queryKey: ['liabilities', params],
     queryFn: async () => {
       const response = await accountingApi.getLiabilities(params)
-      return response.data
+      return response.data.liabilities
     },
   })
 }
@@ -170,6 +170,138 @@ export function useCreateLiability() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create liability')
+    },
+  })
+}
+
+// Delete operations (admin/superAdmin only)
+export function useDeleteAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => accountingApi.deleteAccount(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      toast.success('Account deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete account')
+    },
+  })
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => accountingApi.deleteCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      toast.success('Category deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete category')
+    },
+  })
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => accountingApi.deleteTransaction(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      toast.success('Transaction deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete transaction')
+    },
+  })
+}
+
+export function useDeleteVendor() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => accountingApi.deleteVendor(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      toast.success('Vendor deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete vendor')
+    },
+  })
+}
+
+export function useDeleteLiability() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => accountingApi.deleteLiability(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['liabilities'] })
+      toast.success('Liability deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete liability')
+    },
+  })
+}
+
+// Reports
+export function useReportSummary(params?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ['report-summary', params],
+    queryFn: async () => {
+      const response = await accountingApi.getReportSummary(params)
+      return response.data
+    },
+  })
+}
+
+export function useReportIncomeExpense(params?: {
+  from?: string
+  to?: string
+  groupBy?: 'day' | 'week' | 'month'
+}) {
+  return useQuery({
+    queryKey: ['report-income-expense', params],
+    queryFn: async () => {
+      const response = await accountingApi.getReportIncomeExpense(params)
+      return response.data
+    },
+  })
+}
+
+export function useReportByCategory(params?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ['report-by-category', params],
+    queryFn: async () => {
+      const response = await accountingApi.getReportByCategory(params)
+      return response.data
+    },
+  })
+}
+
+export function useReportByAccount(params?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ['report-by-account', params],
+    queryFn: async () => {
+      const response = await accountingApi.getReportByAccount(params)
+      return response.data
+    },
+  })
+}
+
+export function useReportVendorPayables() {
+  return useQuery({
+    queryKey: ['report-vendor-payables'],
+    queryFn: async () => {
+      const response = await accountingApi.getReportVendorPayables()
+      return response.data
     },
   })
 }

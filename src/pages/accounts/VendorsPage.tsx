@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useVendors, useCreateVendor } from '@/hooks'
+import { useVendors, useCreateVendor, useDeleteVendor } from '@/hooks'
+import { useAuthStore } from '@/stores'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Card,
@@ -28,8 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus, Users } from 'lucide-react'
+import { Plus, Users, Trash2, AlertTriangle } from 'lucide-react'
 
 const vendorSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
@@ -42,7 +44,29 @@ const vendorSchema = z.object({
 export function VendorsPage() {
   const { data: vendors, isLoading } = useVendors()
   const createVendor = useCreateVendor()
+  const deleteVendor = useDeleteVendor()
+  const { role } = useAuthStore()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [vendorToDelete, setVendorToDelete] = useState<string | null>(null)
+
+  const canDelete = role === 'admin' || role === 'superAdmin'
+
+  const handleDeleteClick = (id: string) => {
+    setVendorToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (vendorToDelete) {
+      deleteVendor.mutate(vendorToDelete, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false)
+          setVendorToDelete(null)
+        },
+      })
+    }
+  }
 
   const {
     register,
@@ -63,6 +87,8 @@ export function VendorsPage() {
     })
   }
 
+  const totalPayables = vendors?.reduce((sum, v) => sum + (v.balance || 0), 0) || 0
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -77,20 +103,37 @@ export function VendorsPage() {
         </Button>
       </div>
 
-      {/* Summary Card */}
-      <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-purple-500/20 p-3">
-              <Users className="size-8 text-purple-600" />
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="rounded-xl bg-purple-500/20 p-3">
+                <Users className="size-8 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Vendors</p>
+                <p className="text-3xl font-bold">{vendors?.length || 0}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Vendors</p>
-              <p className="text-3xl font-bold">{vendors?.length || 0}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200/50 dark:border-orange-800/50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="rounded-xl bg-orange-100 dark:bg-orange-900/30 p-3">
+                <AlertTriangle className="size-8 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Vendor Payables</p>
+                <p className="text-3xl font-bold text-orange-600">
+                  {formatCurrency(totalPayables)}
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Vendors Table */}
       <Card>
@@ -111,14 +154,15 @@ export function VendorsPage() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Address</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-right">Amount Owed</TableHead>
                     <TableHead>Created</TableHead>
+                    {canDelete && <TableHead className="w-[80px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {vendors?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-12 text-muted-foreground">
                         No vendors found
                       </TableCell>
                     </TableRow>
@@ -135,6 +179,18 @@ export function VendorsPage() {
                           {formatCurrency(vendor.balance)}
                         </TableCell>
                         <TableCell>{formatDate(vendor.createdAt)}</TableCell>
+                        {canDelete && (
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(vendor._id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -189,6 +245,30 @@ export function VendorsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Vendor</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this vendor? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteVendor.isPending}
+            >
+              {deleteVendor.isPending ? <Spinner size="sm" /> : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

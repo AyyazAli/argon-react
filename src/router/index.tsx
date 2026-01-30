@@ -15,6 +15,7 @@ import { AccountsPage } from "@/pages/accounts/AccountsPage";
 import { CategoriesPage } from "@/pages/accounts/CategoriesPage";
 import { VendorsPage } from "@/pages/accounts/VendorsPage";
 import { LiabilityPage } from "@/pages/accounts/LiabilityPage";
+import { AccountsReportsPage } from "@/pages/accounts/AccountsReportsPage";
 import { InventoryPage } from "@/pages/inventory/InventoryPage";
 import { VendorInventoryPage } from "@/pages/inventory/VendorInventoryPage";
 import {
@@ -94,7 +95,7 @@ export const router = createHashRouter([
       {
         path: "transactions",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <TransactionsPage />
           </RoleGuard>
         ),
@@ -102,7 +103,7 @@ export const router = createHashRouter([
       {
         path: "transactions/:transactionId",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <TransactionsPage />
           </RoleGuard>
         ),
@@ -110,7 +111,7 @@ export const router = createHashRouter([
       {
         path: "accounts",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <AccountsPage />
           </RoleGuard>
         ),
@@ -118,7 +119,7 @@ export const router = createHashRouter([
       {
         path: "categories",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <CategoriesPage />
           </RoleGuard>
         ),
@@ -126,7 +127,7 @@ export const router = createHashRouter([
       {
         path: "vendors",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <VendorsPage />
           </RoleGuard>
         ),
@@ -134,8 +135,16 @@ export const router = createHashRouter([
       {
         path: "liability",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
             <LiabilityPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "accounts-reports",
+        element: (
+          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+            <AccountsReportsPage />
           </RoleGuard>
         ),
       },
