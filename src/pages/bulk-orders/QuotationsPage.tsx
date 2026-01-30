@@ -390,7 +390,7 @@ export function QuotationsPage() {
                                 <Download className="size-4 mr-2" />
                                 Download PDF
                               </DropdownMenuItem>
-                              {quotation.status === 'pending' && (
+                              {quotation.status === 'pending' || quotation.status === 'sent' && (
                                 <DropdownMenuItem onClick={() => handleOpenForm(quotation)}>
                                   <Pencil className="size-4 mr-2" />
                                   Edit
