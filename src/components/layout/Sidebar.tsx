@@ -149,7 +149,7 @@ const navGroups: NavGroup[] = [
         path: '/bulk-reports',
         title: 'Reports',
         icon: <BarChart3 className="size-5" />,
-        roles: ['superAdmin', 'admin', 'bulkOrder'],
+        roles: ['superAdmin', 'admin'],
       },
     ],
   },
