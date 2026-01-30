@@ -360,6 +360,7 @@ export function InvoiceFormModal({
                   <Input
                     type="number"
                     min="0"
+                    step="0.01"
                     value={discountAmount}
                     onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
                     className="w-32 text-right"
@@ -371,9 +372,11 @@ export function InvoiceFormModal({
                     type="number"
                     min="0"
                     max="100"
+                    step="0.01"
                     value={taxPercent}
                     onChange={(e) => setTaxPercent(parseFloat(e.target.value) || 0)}
                     className="w-32 text-right"
+                    placeholder="e.g. 12.5"
                   />
                 </div>
                 <div className="flex justify-between">
@@ -390,6 +393,7 @@ export function InvoiceFormModal({
                     type="number"
                     min="0"
                     max={grandTotal}
+                    step="0.01"
                     value={advanceAmount}
                     onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
                     className="w-32 text-right"
