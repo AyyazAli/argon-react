@@ -49,6 +49,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { QuotationFormModal } from './QuotationFormModal'
 import { QuotationDetailModal } from './QuotationDetailModal'
+import { ReassignDialog } from './ReassignDialog'
 import { QuotationPDF } from '@/components/pdf/PDFGenerator'
 import type { BulkQuotation, QuotationInput, QuotationStatus, BulkCustomer } from '@/types'
 import {
@@ -61,6 +62,7 @@ import {
   Download,
   ArrowRight,
   Eye,
+  UserCheck,
 } from 'lucide-react'
 import { pdf } from '@react-pdf/renderer'
 import { saveAs } from 'file-saver'
@@ -105,9 +107,11 @@ export function QuotationsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false)
   const [editingQuotation, setEditingQuotation] = useState<BulkQuotation | null>(null)
   const [quotationToDelete, setQuotationToDelete] = useState<BulkQuotation | null>(null)
   const [quotationForStatusChange, setQuotationForStatusChange] = useState<BulkQuotation | null>(null)
+  const [quotationToReassign, setQuotationToReassign] = useState<BulkQuotation | null>(null)
   const [selectedQuotation, setSelectedQuotation] = useState<BulkQuotation | null>(null)
   const [newStatus, setNewStatus] = useState<QuotationStatus>('pending')
   const [statusNotes, setStatusNotes] = useState('')
@@ -209,6 +213,22 @@ export function QuotationsPage() {
   const handleViewQuotation = (quotation: BulkQuotation) => {
     setSelectedQuotation(quotation)
     setIsDetailModalOpen(true)
+  }
+
+  const handleReassignClick = (quotation: BulkQuotation) => {
+    setQuotationToReassign(quotation)
+    setIsReassignDialogOpen(true)
+  }
+
+  const handleReassign = async (userId: string) => {
+    if (quotationToReassign) {
+      await updateQuotation.mutateAsync({
+        id: quotationToReassign._id,
+        data: { createdBy: userId } as QuotationInput
+      })
+      setIsReassignDialogOpen(false)
+      setQuotationToReassign(null)
+    }
   }
 
   const getCustomerName = (quotation: BulkQuotation) => {
@@ -390,7 +410,7 @@ export function QuotationsPage() {
                                 <Download className="size-4 mr-2" />
                                 Download PDF
                               </DropdownMenuItem>
-                              {quotation.status === 'pending' || quotation.status === 'sent' && (
+                              {(quotation.status === 'pending' || quotation.status === 'sent') && (
                                 <DropdownMenuItem onClick={() => handleOpenForm(quotation)}>
                                   <Pencil className="size-4 mr-2" />
                                   Edit
@@ -404,6 +424,12 @@ export function QuotationsPage() {
                                 >
                                   <ArrowRight className="size-4 mr-2" />
                                   Create Invoice
+                                </DropdownMenuItem>
+                              )}
+                              {isAdmin && (
+                                <DropdownMenuItem onClick={() => handleReassignClick(quotation)}>
+                                  <UserCheck className="size-4 mr-2" />
+                                  Reassign
                                 </DropdownMenuItem>
                               )}
                               {isAdmin && quotation.status === 'pending' && (
@@ -521,6 +547,25 @@ export function QuotationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reassign Dialog */}
+      <ReassignDialog
+        open={isReassignDialogOpen}
+        onClose={() => {
+          setIsReassignDialogOpen(false)
+          setQuotationToReassign(null)
+        }}
+        onConfirm={handleReassign}
+        currentUserId={
+          quotationToReassign?.createdBy
+            ? typeof quotationToReassign.createdBy === 'string'
+              ? quotationToReassign.createdBy
+              : quotationToReassign.createdBy._id
+            : undefined
+        }
+        title="Reassign Quotation"
+        description={`Select a user to assign quotation "${quotationToReassign?.quotationNumber}" to.`}
+      />
     </div>
   )
 }

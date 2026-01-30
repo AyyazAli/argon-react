@@ -67,6 +67,7 @@ export interface BulkQuotation {
   grandTotal: number
   validUntil?: string
   notes?: string
+  bottomNote?: string
   statusHistory?: StatusHistory[]
   createdBy?: {
     _id: string
@@ -85,6 +86,8 @@ export interface QuotationInput {
   taxPercent?: number
   validUntil?: string
   notes?: string
+  bottomNote?: string
+  createdBy?: string
 }
 
 // Invoice Types
@@ -116,6 +119,7 @@ export interface BulkInvoice {
   paymentTerms?: string
   dueDate?: string
   notes?: string
+  bottomNote?: string
   bankAccounts?: BulkBankAccount[] | string[]
   statusHistory?: StatusHistory[]
   createdBy?: {
@@ -136,7 +140,9 @@ export interface InvoiceInput {
   paymentTerms?: string
   dueDate?: string
   notes?: string
+  bottomNote?: string
   bankAccounts?: string[]
+  createdBy?: string
 }
 
 // Bank Account Types

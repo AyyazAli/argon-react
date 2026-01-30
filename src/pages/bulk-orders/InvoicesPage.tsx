@@ -45,9 +45,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { InvoiceFormModal } from './InvoiceFormModal'
 import { InvoiceDetailModal } from './InvoiceDetailModal'
+import { ReassignDialog } from './ReassignDialog'
 import { InvoicePDF } from '@/components/pdf/PDFGenerator'
 import type { BulkInvoice, BulkQuotation, InvoiceInput, BulkCustomer, InvoiceStatus } from '@/types'
-import { Search, FileText, MoreVertical, Download, Plus, Eye, Pencil, Trash2 } from 'lucide-react'
+import { Search, FileText, MoreVertical, Download, Plus, Eye, Pencil, Trash2, UserCheck } from 'lucide-react'
 import { pdf } from '@react-pdf/renderer'
 import { saveAs } from 'file-saver'
 import { useAuthStore } from '@/stores'
@@ -94,10 +95,12 @@ export function InvoicesPage() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false)
   const [selectedQuotation, setSelectedQuotation] = useState<BulkQuotation | null>(null)
   const [editingInvoice, setEditingInvoice] = useState<BulkInvoice | null>(null)
   const [invoiceForStatusChange, setInvoiceForStatusChange] = useState<BulkInvoice | null>(null)
   const [invoiceToDelete, setInvoiceToDelete] = useState<BulkInvoice | null>(null)
+  const [invoiceToReassign, setInvoiceToReassign] = useState<BulkInvoice | null>(null)
   const [selectedInvoice, setSelectedInvoice] = useState<BulkInvoice | null>(null)
   const [newStatus, setNewStatus] = useState<InvoiceStatus>('sent')
   const [statusNotes, setStatusNotes] = useState('')
@@ -212,6 +215,22 @@ export function InvoicesPage() {
       await deleteInvoice.mutateAsync(invoiceToDelete._id)
       setIsDeleteDialogOpen(false)
       setInvoiceToDelete(null)
+    }
+  }
+
+  const handleReassignClick = (invoice: BulkInvoice) => {
+    setInvoiceToReassign(invoice)
+    setIsReassignDialogOpen(true)
+  }
+
+  const handleReassign = async (userId: string) => {
+    if (invoiceToReassign) {
+      await updateInvoice.mutateAsync({
+        id: invoiceToReassign._id,
+        data: { createdBy: userId } as Partial<InvoiceInput>
+      })
+      setIsReassignDialogOpen(false)
+      setInvoiceToReassign(null)
     }
   }
 
@@ -441,6 +460,10 @@ export function InvoicesPage() {
                               {isAdmin && (
                                 <>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleReassignClick(invoice)}>
+                                    <UserCheck className="size-4 mr-2" />
+                                    Reassign
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => handleDeleteClick(invoice)}
                                     className="text-destructive focus:text-destructive"
@@ -569,6 +592,25 @@ export function InvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reassign Dialog */}
+      <ReassignDialog
+        open={isReassignDialogOpen}
+        onClose={() => {
+          setIsReassignDialogOpen(false)
+          setInvoiceToReassign(null)
+        }}
+        onConfirm={handleReassign}
+        currentUserId={
+          invoiceToReassign?.createdBy
+            ? typeof invoiceToReassign.createdBy === 'string'
+              ? invoiceToReassign.createdBy
+              : invoiceToReassign.createdBy._id
+            : undefined
+        }
+        title="Reassign Invoice"
+        description={`Select a user to assign invoice "${invoiceToReassign?.invoiceNumber}" to.`}
+      />
     </div>
   )
 }

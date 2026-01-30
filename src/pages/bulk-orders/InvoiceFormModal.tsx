@@ -35,6 +35,9 @@ interface ItemForm {
   unitPrice: number
 }
 
+const DEFAULT_BOTTOM_NOTE = `For this print job, 7–10 working days will be required after final approval.
+A 70% advance payment is required to proceed with production, with the remaining 30% payable upon completion.`
+
 export function InvoiceFormModal({
   open,
   onClose,
@@ -51,6 +54,7 @@ export function InvoiceFormModal({
   const [paymentTerms, setPaymentTerms] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [bottomNote, setBottomNote] = useState(DEFAULT_BOTTOM_NOTE)
   const [selectedBankAccounts, setSelectedBankAccounts] = useState<string[]>([])
   
   const { data: bankAccounts } = useBankAccounts()
@@ -72,6 +76,7 @@ export function InvoiceFormModal({
       setPaymentTerms('')
       setDueDate('')
       setNotes(quotation.notes || '')
+      setBottomNote(quotation.bottomNote || DEFAULT_BOTTOM_NOTE)
       setSelectedBankAccounts([])
     } else if (invoice) {
       // Editing existing invoice
@@ -90,6 +95,7 @@ export function InvoiceFormModal({
       setPaymentTerms(invoice.paymentTerms || '')
       setDueDate(invoice.dueDate?.split('T')[0] || '')
       setNotes(invoice.notes || '')
+      setBottomNote(invoice.bottomNote || (invoice.quotation as BulkQuotation)?.bottomNote || DEFAULT_BOTTOM_NOTE)
       const bankAccountIds = invoice.bankAccounts?.map(acc => 
         typeof acc === 'string' ? acc : acc._id
       ) || []
@@ -142,6 +148,7 @@ export function InvoiceFormModal({
       paymentTerms: paymentTerms || undefined,
       dueDate: dueDate || undefined,
       notes: notes || undefined,
+      bottomNote: bottomNote?.trim() || undefined,
       bankAccounts: selectedBankAccounts,
     }
 
@@ -309,6 +316,17 @@ export function InvoiceFormModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Additional notes..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="bottomNote">Bottom Note (Terms)</Label>
+                  <textarea
+                    id="bottomNote"
+                    value={bottomNote}
+                    onChange={(e) => setBottomNote(e.target.value)}
+                    placeholder="Terms shown at bottom of invoice PDF..."
+                    rows={4}
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
                 <div className="grid gap-2">

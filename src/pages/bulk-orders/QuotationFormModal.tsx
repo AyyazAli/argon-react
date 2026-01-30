@@ -41,6 +41,9 @@ const emptyItem: ItemForm = {
   unitPrice: 0,
 }
 
+const DEFAULT_BOTTOM_NOTE = `For this print job, 7–10 working days will be required after final approval.
+A 70% advance payment is required to proceed with production, with the remaining 30% payable upon completion.`
+
 export function QuotationFormModal({
   open,
   onClose,
@@ -59,6 +62,7 @@ export function QuotationFormModal({
   const [taxPercent, setTaxPercent] = useState(0)
   const [validUntil, setValidUntil] = useState('')
   const [notes, setNotes] = useState('')
+  const [bottomNote, setBottomNote] = useState(DEFAULT_BOTTOM_NOTE)
   const customerDropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -72,6 +76,7 @@ export function QuotationFormModal({
     setTaxPercent(0)
     setValidUntil('')
     setNotes('')
+    setBottomNote(DEFAULT_BOTTOM_NOTE)
   }
 
   // Close dropdown when clicking outside
@@ -117,6 +122,7 @@ export function QuotationFormModal({
       setTaxPercent(editingQuotation.taxPercent)
       setValidUntil(editingQuotation.validUntil?.split('T')[0] || '')
       setNotes(editingQuotation.notes || '')
+      setBottomNote(editingQuotation.bottomNote || DEFAULT_BOTTOM_NOTE)
     } else {
       resetForm()
     }
@@ -194,6 +200,7 @@ export function QuotationFormModal({
       taxPercent,
       validUntil: validUntil || undefined,
       notes: notes || undefined,
+      bottomNote: bottomNote?.trim() || undefined,
     }
 
     await onSubmit(data)
@@ -397,6 +404,17 @@ export function QuotationFormModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Additional notes..."
+                  />
+                </div>
+                <div className="grid gap-2 col-span-2">
+                  <Label htmlFor="bottomNote">Bottom Note (Terms)</Label>
+                  <textarea
+                    id="bottomNote"
+                    value={bottomNote}
+                    onChange={(e) => setBottomNote(e.target.value)}
+                    placeholder="Terms shown at bottom of quotation PDF..."
+                    rows={4}
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
               </div>
