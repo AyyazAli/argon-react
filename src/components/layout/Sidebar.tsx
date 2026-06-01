@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores'
+import penhouseLogo from '@/assets/penhouse-logo.png'
+
+// Map business names to their logo assets. Add more here as logos become available.
+const BUSINESS_LOGOS: Record<string, string> = {
+  penhouse: penhouseLogo,
+}
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -176,7 +182,8 @@ const navGroups: NavGroup[] = [
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation()
-  const { role } = useAuthStore()
+  const { role, business } = useAuthStore()
+  const businessLogo = business ? BUSINESS_LOGOS[business.toLowerCase()] : undefined
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   const hasAccess = (roles?: string[]) => {
@@ -229,7 +236,9 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {/* Header */}
         <div className="flex h-16 items-center justify-between border-b px-4">
           {!isCollapsed && (
-            <h2 className="text-lg font-semibold">Argon Portal</h2>
+            businessLogo
+              ? <img src={businessLogo} alt={business ?? 'Portal'} className="h-8 w-auto object-contain" />
+              : <h2 className="text-lg font-semibold">Argon Portal</h2>
           )}
           <Button
             variant="ghost"

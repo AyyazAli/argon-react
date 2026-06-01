@@ -180,6 +180,45 @@ export const ordersApi = {
     return response.data
   },
 
+  // Manual booking
+  bookManual: async (
+    orderIds: string[],
+    company: string
+  ): Promise<ApiResponse<Order[]>> => {
+    const response = await api.post<ApiResponse<Order[]>>(
+      '/api/argon/orders/manual/book',
+      { orderIds, company }
+    )
+    return response.data
+  },
+
+  // PostEx booking
+  bookByPostex: async (ids: string[]): Promise<ApiResponse<Order[]>> => {
+    const response = await api.post<ApiResponse<Order[]>>(
+      '/api/argon/orders/postex/book',
+      ids
+    )
+    return response.data
+  },
+
+  // Get PostEx cities
+  getPostexCities: async (): Promise<ApiResponse<City[]>> => {
+    const response = await api.get<ApiResponse<City[]>>(
+      '/api/argon/orders/postex/cities'
+    )
+    return response.data
+  },
+
+  // PostEx tracking history
+  postexTrackingHistory: async (
+    trackingNumber: string
+  ): Promise<ApiResponse<unknown>> => {
+    const response = await api.get<ApiResponse<unknown>>(
+      `/api/argon/orders/postex/track?trackingNumber=${trackingNumber}`
+    )
+    return response.data
+  },
+
   // Download file
   downloadFile: async (fileName: string): Promise<Blob> => {
     const response = await api.get('/api/argon/download-file', {

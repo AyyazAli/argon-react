@@ -1,7 +1,19 @@
-import { useState, useMemo } from 'react'
-import { useOrders, useFetchLatestOrders, useUpdateOrderStatus, useBookOrders } from '@/hooks'
-import { useOrderStore } from '@/stores'
-import { formatDate, formatCurrency, cn } from '@/lib/utils'
+import { useState, useMemo, useRef } from 'react'
+import { pdf } from '@react-pdf/renderer'
+import { saveAs } from 'file-saver'
+import { ManualBookingLabels } from '@/components/pdf/ManualBookingLabels'
+import {
+  useOrders,
+  useOrderStats,
+  useFetchLatestOrders,
+  useUpdateOrderStatus,
+  useBookOrders,
+  useBookManual,
+  useCreateTraxReceivingSheet,
+  useGeneratePrintfileFromCSV,
+} from '@/hooks'
+import { useOrderStore, useAuthStore } from '@/stores'
+import { formatDate, cn } from '@/lib/utils'
 import {
   Card,
   CardContent,
@@ -40,93 +52,93 @@ import type { Order, OrderStatus, CourierCompany } from '@/types'
 import {
   RefreshCw,
   Search,
-  Eye,
   Truck,
   ChevronLeft,
   ChevronRight,
-  Pencil,
+  Upload,
 } from 'lucide-react'
 
 const ORDER_STATUSES: OrderStatus[] = [
-  'pending',
-  'confirm',
-  'printing',
-  'dispatch',
-  'delivered',
-  'return',
-  'cancel',
-  'call again',
-  'advance pending',
-  'advance done',
-  'self collect',
+  'pending', 'confirm', 'printing', 'dispatch', 'delivered',
+  'return', 'cancel', 'call again', 'advance pending', 'advance done', 'self collect',
 ]
 
 const COURIER_COMPANIES: { value: CourierCompany; label: string }[] = [
-  { value: 'trax', label: 'Trax' },
-  { value: 'leopard', label: 'Leopard' },
-  { value: 'lahore', label: 'Lahore' },
-  { value: 'printfile', label: 'Print File' },
+  { value: 'leopard', label: 'Book By Leopard' },
+  { value: 'trax', label: 'Book By Trax' },
+  { value: 'postex', label: 'Book By PostEx' },
+  { value: 'lahore', label: 'Book By Lahore - excelFile' },
+  { value: 'printfile', label: 'Generate Printfile' },
+  { value: 'manual', label: 'Manual Booking (Labels PDF)' },
 ]
+
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 500, 1000, 2000]
 
 const getStatusColor = (status: string) => {
   switch (status?.toLowerCase()) {
-    case 'pending':
-      return 'bg-amber-50 text-amber-700 border border-amber-200'
-    case 'confirm':
-      return 'bg-blue-50 text-blue-700 border border-blue-200'
-    case 'dispatch':
-      return 'bg-violet-50 text-violet-700 border border-violet-200'
-    case 'delivered':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    case 'return':
-      return 'bg-orange-50 text-orange-700 border border-orange-200'
-    case 'cancel':
-      return 'bg-red-50 text-red-700 border border-red-200'
-    case 'printing':
-      return 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-    case 'call again':
-      return 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-    case 'advance pending':
-      return 'bg-pink-50 text-pink-700 border border-pink-200'
-    case 'advance done':
-      return 'bg-teal-50 text-teal-700 border border-teal-200'
-    case 'self collect':
-      return 'bg-slate-50 text-slate-700 border border-slate-200'
-    default:
-      return 'bg-gray-50 text-gray-700 border border-gray-200'
+    case 'pending':         return '!bg-sky-400 !text-white border-transparent [&_svg]:!text-white'
+    case 'confirm':         return '!bg-green-500 !text-white border-transparent [&_svg]:!text-white'
+    case 'dispatch':        return '!bg-orange-400 !text-white border-transparent [&_svg]:!text-white'
+    case 'delivered':       return '!bg-teal-500 !text-white border-transparent [&_svg]:!text-white'
+    case 'return':          return '!bg-red-500 !text-white border-transparent [&_svg]:!text-white'
+    case 'cancel':          return '!bg-red-600 !text-white border-transparent [&_svg]:!text-white'
+    case 'printing':        return '!bg-purple-500 !text-white border-transparent [&_svg]:!text-white'
+    case 'call again':      return '!bg-yellow-400 !text-black border-transparent [&_svg]:!text-black'
+    case 'advance pending': return '!bg-amber-700 !text-white border-transparent [&_svg]:!text-white'
+    case 'advance done':    return '!bg-green-600 !text-white border-transparent [&_svg]:!text-white'
+    case 'self collect':    return '!bg-slate-500 !text-white border-transparent [&_svg]:!text-white'
+    default:                return '!bg-gray-400 !text-white border-transparent [&_svg]:!text-white'
   }
 }
 
 export function OrdersPage() {
   const { data: orders, isLoading } = useOrders()
+  const { data: stats } = useOrderStats()
   const fetchLatest = useFetchLatestOrders()
   const updateStatus = useUpdateOrderStatus()
   const bookOrders = useBookOrders()
+  const bookManual = useBookManual()
+  const createReceivingSheet = useCreateTraxReceivingSheet()
+  const generateFromCSV = useGeneratePrintfileFromCSV()
   const { selectedOrders, toggleOrderSelection, clearSelection, setSelectedOrders } = useOrderStore()
+  const business = useAuthStore((s) => s.business)
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
+  const [isGeneratingLabels, setIsGeneratingLabels] = useState(false)
+  const [manualCompany, setManualCompany] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedCompany, setSelectedCompany] = useState<CourierCompany | ''>('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [viewOrder, setViewOrder] = useState<Order | null>(null)
+  const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [viewOrderId, setViewOrderId] = useState<string | null>(null)
+  // Derived from live orders so dispatch details stay current after booking
+  const viewOrder = viewOrderId ? (orders?.find(o => o._id === viewOrderId) ?? null) : null
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
+  const [receivingSheetDialog, setReceivingSheetDialog] = useState<{ open: boolean; trackingIds: string[] }>({
+    open: false,
+    trackingIds: [],
+  })
 
-  const itemsPerPage = 20
-
-  // Filter and search orders
   const filteredOrders = useMemo(() => {
     if (!orders) return []
-
     return orders.filter((order) => {
+      const q = searchQuery.toLowerCase()
       const matchesSearch =
         searchQuery === '' ||
-        order.billing.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.billing.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.billing.first_name?.toLowerCase().includes(q) ||
+        order.billing.last_name?.toLowerCase().includes(q) ||
+        `${order.billing.first_name ?? ''} ${order.billing.last_name ?? ''}`.toLowerCase().includes(q) ||
         order.billing.phone?.includes(searchQuery) ||
-        order.billing.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.billing.email?.toLowerCase().includes(q) ||
+        order.billing.city?.toLowerCase().includes(q) ||
+        order.billing.address?.toLowerCase().includes(q) ||
+        String(order.cn ?? '').includes(searchQuery) ||
+        String(order.orderId ?? '').toLowerCase().includes(q) ||
+        order.remarks?.toLowerCase().includes(q) ||
+        order.notes?.toLowerCase().includes(q) ||
         order.dispatchDetails?.some((d) =>
-          d.trackingId?.toLowerCase().includes(searchQuery.toLowerCase())
+          d.trackingId?.toLowerCase().includes(q)
         )
 
       const matchesStatus =
@@ -136,16 +148,15 @@ export function OrdersPage() {
     })
   }, [orders, searchQuery, statusFilter])
 
-  // Pagination
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   )
 
-  const isAllSelected = paginatedOrders.length > 0 && paginatedOrders.every((order) =>
-    selectedOrders.some((so) => so._id === order._id)
-  )
+  const isAllSelected =
+    paginatedOrders.length > 0 &&
+    paginatedOrders.every((order) => selectedOrders.some((so) => so._id === order._id))
 
   const handleSelectAll = () => {
     if (isAllSelected) {
@@ -159,101 +170,188 @@ export function OrdersPage() {
     updateStatus.mutate({ orderId, status })
   }
 
-  const handleBookOrders = () => {
+  const handleBookOrders = async () => {
     if (!selectedCompany || selectedOrders.length === 0) return
-    
-    bookOrders.mutate({
-      company: selectedCompany,
-      orderIds: selectedOrders.map((o) => o._id),
-    })
+
+    // Manual booking — call API to set dispatch info, then generate PDF
+    if (selectedCompany === 'manual') {
+      if (!manualCompany) return          // company must be selected
+      setBookingDialogOpen(false)
+      setIsGeneratingLabels(true)
+      try {
+        // 1. Update orders in backend (status → dispatch, add dispatchDetails)
+        await new Promise<void>((resolve, reject) => {
+          bookManual.mutate(
+            { orderIds: selectedOrders.map((o) => o._id), company: manualCompany },
+            { onSuccess: () => resolve(), onError: (e) => reject(e) }
+          )
+        })
+        // 2. Generate & download PDF labels
+        const blob = await pdf(
+          <ManualBookingLabels
+            orders={selectedOrders}
+            businessName={business || 'portal'}
+          />
+        ).toBlob()
+        saveAs(blob, `manual-labels-${new Date().toISOString().split('T')[0]}.pdf`)
+      } catch (e) {
+        console.error('Failed during manual booking', e)
+      } finally {
+        setIsGeneratingLabels(false)
+        setManualCompany('')
+      }
+      return
+    }
+
+    const orderIds = selectedOrders.map((o) => o._id)
+
+    bookOrders.mutate(
+      { company: selectedCompany, orderIds },
+      {
+        onSuccess: (data) => {
+          if (selectedCompany === 'trax') {
+            const orders = Array.isArray(data.data) ? data.data : (data.data as { orders?: Order[] }).orders || []
+            const trackingIds: string[] = []
+            orders.forEach((order: Order) => {
+              if (order.dispatchDetails?.length) {
+                const last = order.dispatchDetails[order.dispatchDetails.length - 1]
+                if (last.trackingId) trackingIds.push(last.trackingId)
+              }
+            })
+            if (trackingIds.length > 0) {
+              setReceivingSheetDialog({ open: true, trackingIds })
+            }
+          }
+        },
+      }
+    )
     setBookingDialogOpen(false)
   }
 
-  const getTrackingNumber = (order: Order) => {
-    if (!order.dispatchDetails?.length) return '-'
-    const latest = order.dispatchDetails[order.dispatchDetails.length - 1]
-    return latest.trackingId || '-'
+  const handleCreateReceivingSheet = () => {
+    createReceivingSheet.mutate(receivingSheetDialog.trackingIds)
+    setReceivingSheetDialog({ open: false, trackingIds: [] })
+  }
+
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      generateFromCSV.mutate(file)
+      e.target.value = ''
+    }
   }
 
   return (
     <div className="space-y-6">
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+          {[
+            { name: 'Total', value: stats.total },
+            { name: 'Pending', value: stats.pending },
+            { name: 'Confirmed', value: stats.confirmed },
+            { name: 'Dispatched', value: stats.dispatched },
+            { name: 'Delivered', value: stats.delivered },
+            { name: 'Returned', value: stats.returned },
+            { name: 'Cancelled', value: stats.cancelled },
+          ].map((item) => (
+            <Card key={item.name} className="mb-0">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">{item.name}</p>
+                <p className="text-2xl font-bold mt-1">{item.value ?? 0}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
-          <p className="text-muted-foreground">
-            Manage and track all your orders
-          </p>
+          <p className="text-muted-foreground">Manage and track all your orders</p>
         </div>
-        <Button
-          onClick={() => fetchLatest.mutate()}
-          disabled={fetchLatest.isPending}
-        >
-          <RefreshCw className={cn('size-4', fetchLatest.isPending && 'animate-spin')} />
-          Fetch Latest
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={generateFromCSV.isPending}
+            title="Upload CSV for Print"
+          >
+            {generateFromCSV.isPending ? (
+              <Spinner size="sm" />
+            ) : (
+              <Upload className="size-4" />
+            )}
+            Upload CSV for Print
+          </Button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleCSVUpload}
+          />
+          <Button onClick={() => fetchLatest.mutate()} disabled={fetchLatest.isPending}>
+            <RefreshCw className={cn('size-4', fetchLatest.isPending && 'animate-spin')} />
+            Fetch Latest
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Actions */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Search and Filter */}
             <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search orders..."
+                  placeholder="Search Order"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
                   className="pl-10"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1) }}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   {ORDER_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status} className="capitalize">
-                      {status}
-                    </SelectItem>
+                    <SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Booking Actions */}
-            {selectedOrders.length > 0 && (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">
-                  {selectedOrders.length} selected
-                </span>
-                <Select
-                  value={selectedCompany}
-                  onValueChange={(v) => setSelectedCompany(v as CourierCompany)}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COURIER_COMPANIES.map((company) => (
-                      <SelectItem key={company.value} value={company.value}>
-                        {company.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={() => setBookingDialogOpen(true)}
-                  disabled={!selectedCompany}
-                >
-                  <Truck className="size-4" />
-                  Book Orders
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedOrders.length > 0 && (
+                <span className="text-sm text-muted-foreground">{selectedOrders.length} selected</span>
+              )}
+              <Select
+                value={selectedCompany}
+                onValueChange={(v) => setSelectedCompany(v as CourierCompany)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select Action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COURIER_COMPANIES.map((company) => (
+                    <SelectItem key={company.value} value={company.value}>{company.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => setBookingDialogOpen(true)}
+                disabled={!selectedCompany || selectedOrders.length === 0 || isGeneratingLabels}
+              >
+                {isGeneratingLabels ? <Spinner size="sm" /> : <Truck className="size-4" />}
+                {isGeneratingLabels ? 'Generating...' : 'Done'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -261,9 +359,7 @@ export function OrdersPage() {
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Orders ({filteredOrders.length})
-          </CardTitle>
+          <CardTitle>Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -272,36 +368,35 @@ export function OrdersPage() {
             </div>
           ) : (
             <>
-              <div className="rounded-lg border">
+              <div className="rounded-lg border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-12">
-                        <Checkbox
-                          checked={isAllSelected}
-                          onCheckedChange={handleSelectAll}
-                        />
+                        <Checkbox checked={isAllSelected} onCheckedChange={handleSelectAll} />
                       </TableHead>
-                      <TableHead>CN</TableHead>
-                      <TableHead>Customer</TableHead>
+                      <TableHead className="w-16">CN</TableHead>
+                      <TableHead className="min-w-[150px]">Name</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>City</TableHead>
+                      <TableHead className="min-w-[260px]">Address</TableHead>
+                      <TableHead className="w-24">City</TableHead>
                       <TableHead>Total</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead className="w-24">Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Remarks</TableHead>
+                      <TableHead>Order ID</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
                           No orders found
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedOrders.map((order) => (
-                        <TableRow key={order._id}>
+                        <TableRow key={order._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-100">
                           <TableCell>
                             <Checkbox
                               checked={selectedOrders.some((o) => o._id === order._id)}
@@ -309,23 +404,34 @@ export function OrdersPage() {
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            {getTrackingNumber(order)}
+                            <button
+                              className="text-primary hover:underline font-semibold"
+                              onClick={() => setViewOrderId(order._id)}
+                              title="View order details"
+                            >
+                              {order.cn ?? '—'}
+                            </button>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-normal break-words">
                             {order.billing.first_name} {order.billing.last_name}
                           </TableCell>
                           <TableCell>{order.billing.phone}</TableCell>
-                          <TableCell>{order.billing.city}</TableCell>
-                          <TableCell>{formatCurrency(order.total)}</TableCell>
-                          <TableCell>{formatDate(order.date_created)}</TableCell>
+                          <TableCell className="text-sm whitespace-normal break-words align-top">
+                            {order.billing.address}, {order.billing.city}
+                          </TableCell>
+                          <TableCell className="whitespace-normal break-words max-w-[96px]">{order.billing.city}</TableCell>
+                          <TableCell>Rs {order.total}</TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">
+                            {formatDate(order.dateCreated || order.date_created || '')}
+                          </TableCell>
                           <TableCell>
                             <Select
                               value={order.status}
                               onValueChange={(value) => handleStatusChange(order._id, value)}
                             >
-                              <SelectTrigger 
+                              <SelectTrigger
                                 className={cn(
-                                  "w-[130px] h-8 font-medium capitalize rounded-full text-xs shadow-none",
+                                  'w-[130px] h-8 font-medium capitalize rounded-full text-xs shadow-none',
                                   getStatusColor(order.status)
                                 )}
                               >
@@ -334,33 +440,20 @@ export function OrdersPage() {
                               <SelectContent>
                                 {ORDER_STATUSES.map((status) => (
                                   <SelectItem key={status} value={status} className="capitalize">
-                                    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", getStatusColor(status))}>
+                                    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', getStatusColor(status))}>
                                       {status}
                                     </span>
                                   </SelectItem>
                                 ))}
+
                               </SelectContent>
                             </Select>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setViewOrder(order)}
-                                title="View Order"
-                              >
-                                <Eye className="size-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setViewOrder(order)}
-                                title="Edit Order"
-                              >
-                                <Pencil className="size-4" />
-                              </Button>
-                            </div>
+                          <TableCell className="text-sm text-muted-foreground whitespace-normal break-words max-w-[150px]">
+                            {order.remarks || ''}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            Order #{order.orderId}
                           </TableCell>
                         </TableRow>
                       ))
@@ -370,14 +463,30 @@ export function OrdersPage() {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                    {Math.min(currentPage * itemsPerPage, filteredOrders.length)} of{' '}
-                    {filteredOrders.length} orders
-                  </p>
+              <div className="flex items-center justify-between mt-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Rows per page:</span>
+                  <Select
+                    value={String(itemsPerPage)}
+                    onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1) }}
+                  >
+                    <SelectTrigger className="w-[80px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {totalPages > 1 && (
                   <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {(currentPage - 1) * itemsPerPage + 1}–
+                      {Math.min(currentPage * itemsPerPage, filteredOrders.length)} of {filteredOrders.length}
+                    </p>
                     <Button
                       variant="outline"
                       size="icon"
@@ -386,9 +495,7 @@ export function OrdersPage() {
                     >
                       <ChevronLeft className="size-4" />
                     </Button>
-                    <span className="text-sm">
-                      Page {currentPage} of {totalPages}
-                    </span>
+                    <span className="text-sm">Page {currentPage} of {totalPages}</span>
                     <Button
                       variant="outline"
                       size="icon"
@@ -398,8 +505,8 @@ export function OrdersPage() {
                       <ChevronRight className="size-4" />
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </CardContent>
@@ -410,33 +517,98 @@ export function OrdersPage() {
         <OrderDetailsModal
           order={viewOrder}
           open={!!viewOrder}
-          onClose={() => setViewOrder(null)}
+          onClose={() => setViewOrderId(null)}
         />
       )}
 
       {/* Booking Confirmation Dialog */}
-      <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+      <Dialog open={bookingDialogOpen} onOpenChange={(open) => {
+        setBookingDialogOpen(open)
+        if (!open) setManualCompany('')
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Booking</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to book {selectedOrders.length} order(s) via{' '}
-              {COURIER_COMPANIES.find((c) => c.value === selectedCompany)?.label}?
+            <DialogTitle>
+              {COURIER_COMPANIES.find((c) => c.value === selectedCompany)?.label}
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div>
+                {/* Manual booking: company picker */}
+                {selectedCompany === 'manual' && (
+                  <div className="mt-3 mb-2">
+                    <p className="text-sm mb-2 font-medium text-foreground">Select courier company:</p>
+                    <Select value={manualCompany} onValueChange={setManualCompany}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose company..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Leopard', 'TCS', 'Daewoo', 'Cargo'].map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Order list */}
+                {selectedOrders.length > 0 && (
+                  <div className="mt-2 max-h-48 overflow-y-auto text-sm space-y-1">
+                    {selectedOrders.map((order, i) => (
+                      <div key={order._id} className="flex gap-2">
+                        <span className="text-muted-foreground">{i + 1}.</span>
+                        <span>{order.billing.first_name} {order.billing.last_name}</span>
+                        <span className="text-muted-foreground">— {order.billing.city}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBookingDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setBookingDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleBookOrders}
+              disabled={
+                bookOrders.isPending ||
+                (selectedCompany === 'manual' && !manualCompany)
+              }
+            >
+              {bookOrders.isPending ? (
+                <><Spinner size="sm" />Processing...</>
+              ) : 'Okay'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trax Receiving Sheet Dialog */}
+      <Dialog
+        open={receivingSheetDialog.open}
+        onOpenChange={(open) => setReceivingSheetDialog((s) => ({ ...s, open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Receiving Sheet</DialogTitle>
+            <DialogDescription>
+              <p className="mb-3">Successfully booked! Create a receiving sheet for these tracking IDs?</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto text-sm">
+                {receivingSheetDialog.trackingIds.map((id) => (
+                  <p key={id} className="font-mono">{id}</p>
+                ))}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReceivingSheetDialog({ open: false, trackingIds: [] })}
+            >
               Cancel
             </Button>
-            <Button onClick={handleBookOrders} disabled={bookOrders.isPending}>
-              {bookOrders.isPending ? (
-                <>
-                  <Spinner size="sm" />
-                  Booking...
-                </>
-              ) : (
-                'Confirm Booking'
-              )}
+            <Button onClick={handleCreateReceivingSheet} disabled={createReceivingSheet.isPending}>
+              {createReceivingSheet.isPending ? <Spinner size="sm" /> : null}
+              Okay
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -444,4 +616,3 @@ export function OrdersPage() {
     </div>
   )
 }
-

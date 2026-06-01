@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, cn as cx } from '@/lib/utils'
 import {
   useUpdateOrder,
   useAddProduct,
@@ -14,7 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  Badge,
+  DialogFooter,
   Button,
   Input,
   Spinner,
@@ -27,24 +27,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { TrackingModal } from './TrackingModal'
 import type { Order, Product } from '@/types'
 import {
-  Package,
-  User,
-  MapPin,
-  Phone,
-  Mail,
-  Truck,
-  History,
   Pencil,
   X,
   Check,
   Plus,
-  Trash2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from 'lucide-react'
 
 interface OrderDetailsModalProps {
@@ -53,7 +46,6 @@ interface OrderDetailsModalProps {
   onClose: () => void
 }
 
-// Form types
 interface BillingFormData {
   first_name: string
   last_name: string
@@ -69,16 +61,18 @@ interface ProductFormData {
   name: string
   price: number
   qty: number
+  size?: string
   nameToPrint?: string
   nameOnOtherSide?: string
-  mobileModel?: string
-  size?: string
-  color?: string
-  refills?: string
   giftWrap?: string
+  refills?: string
+  color?: string
+  mobileModel?: string
+  printingSide?: string
+  language?: string
+  picture?: string
 }
 
-// Form schemas
 const billingSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
@@ -94,23 +88,80 @@ const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   price: z.number().min(0, 'Price must be positive'),
   qty: z.number().min(1, 'Quantity must be at least 1'),
+  size: z.string().optional(),
   nameToPrint: z.string().optional(),
   nameOnOtherSide: z.string().optional(),
-  mobileModel: z.string().optional(),
-  size: z.string().optional(),
-  color: z.string().optional(),
-  refills: z.string().optional(),
   giftWrap: z.string().optional(),
+  refills: z.string().optional(),
+  color: z.string().optional(),
+  mobileModel: z.string().optional(),
+  printingSide: z.string().optional(),
+  language: z.string().optional(),
+  picture: z.string().optional(),
 })
 
-export function OrderDetailsModal({
-  order,
-  open,
-  onClose,
-}: OrderDetailsModalProps) {
+// Canonical product column order + labels (mirrors Angular generateProductColumns)
+const PRODUCT_FIELD_ORDER: (keyof Product)[] = [
+  'name', 'price', 'qty', 'nameToPrint', 'nameOnOtherSide',
+  'giftWrap', 'size', 'color', 'mobileModel', 'printingSide',
+  'language', 'picture', 'refills',
+]
+const PRODUCT_FIELD_LABELS: Record<string, string> = {
+  name: 'Name', price: 'Price', qty: 'Quantity',
+  nameToPrint: 'Name To Print', nameOnOtherSide: 'Name On Other Side',
+  giftWrap: 'Gift Wrap', size: 'Size', color: 'Color',
+  mobileModel: 'Model', printingSide: 'Printing Side',
+  language: 'Language', picture: 'Picture', refills: 'Refills',
+}
+
+// Product edit/add form fields (order + labels from Angular order-modal)
+const PRODUCT_FORM_FIELDS: { id: keyof ProductFormData; label: string; type?: string }[] = [
+  { id: 'name', label: 'Name' },
+  { id: 'price', label: 'Price', type: 'number' },
+  { id: 'qty', label: 'Quantity', type: 'number' },
+  { id: 'size', label: 'Size' },
+  { id: 'nameToPrint', label: 'Name to Be Printed' },
+  { id: 'nameOnOtherSide', label: 'Name on other side' },
+  { id: 'giftWrap', label: 'Gift Wrap Options' },
+  { id: 'refills', label: 'Refill Options' },
+  { id: 'color', label: 'Color' },
+  { id: 'mobileModel', label: 'Model' },
+  { id: 'printingSide', label: 'Printing Side' },
+  { id: 'language', label: 'Language' },
+  { id: 'picture', label: 'Picture' },
+]
+
+const getStatusBarColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'return':
+    case 'cancel':
+      return 'bg-red-500 text-white'
+    case 'confirm':
+    case 'advance done':
+      return 'bg-emerald-500 text-white'
+    case 'pending':
+      return 'bg-sky-400 text-white'
+    case 'printing':
+      return 'bg-purple-500 text-white'
+    case 'call again':
+      return 'bg-yellow-400 text-black'
+    case 'dispatch':
+      return 'bg-orange-400 text-black'
+    case 'advance pending':
+      return 'bg-amber-700 text-white'
+    case 'delivered':
+      return 'bg-teal-500 text-white'
+    default:
+      return 'bg-slate-400 text-white'
+  }
+}
+
+export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isAddingProduct, setIsAddingProduct] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [trackingModal, setTrackingModal] = useState<{ trackingId: string; company: string } | null>(null)
 
   const updateOrder = useUpdateOrder()
   const addProduct = useAddProduct()
@@ -134,21 +185,24 @@ export function OrderDetailsModal({
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: '',
-      price: 0,
-      qty: 1,
-      nameToPrint: '',
-      nameOnOtherSide: '',
-      mobileModel: '',
-      size: '',
-      color: '',
-      refills: '',
-      giftWrap: '',
+      name: '', price: 0, qty: 1, size: '',
+      nameToPrint: '', nameOnOtherSide: '', giftWrap: '', refills: '',
+      color: '', mobileModel: '', printingSide: '', language: '', picture: '',
     },
   })
 
+  // Dynamic product columns: include a field if any product has a non-empty value
+  const productColumns = PRODUCT_FIELD_ORDER.filter((key) => {
+    if (key === 'name' || key === 'price' || key === 'qty') return true
+    return order.products.some((p) => {
+      const v = p[key]
+      return v !== undefined && v !== null && v !== ''
+    })
+  })
+
   const handleSaveBilling = (data: BillingFormData) => {
-    const historyDescription = `Changed order details: Name from ${order.billing.first_name} ${order.billing.last_name} to ${data.first_name} ${data.last_name}, City from ${order.billing.city} to ${data.city}, Amount from ${order.total} to ${data.total}, Remarks from ${order.remarks || ''} to ${data.remarks || ''}`
+    const historyDescription =
+      `Changed the order details ::: Name From: ${order.billing.first_name} ${order.billing.last_name} to ${data.first_name} ${data.last_name}, City From: ${order.billing.city} to ${data.city}, Amount From: ${order.total} to ${data.total}, Remarks From:${order.remarks ?? ''} to ${data.remarks ?? ''}`
 
     const updatedOrder: Order = {
       ...order,
@@ -165,39 +219,28 @@ export function OrderDetailsModal({
       remarks: data.remarks,
     }
 
-    updateOrder.mutate(
-      { order: updatedOrder, historyDescription },
-      {
-        onSuccess: () => {
-          setIsEditing(false)
-        },
-      }
-    )
+    updateOrder.mutate({ order: updatedOrder, historyDescription }, {
+      onSuccess: () => setIsEditing(false),
+    })
   }
 
   const handleAddProduct = (data: ProductFormData) => {
-    addProduct.mutate(
-      { orderId: order._id, product: data },
-      {
-        onSuccess: () => {
-          setIsAddingProduct(false)
-          productForm.reset()
-        },
-      }
-    )
+    addProduct.mutate({ orderId: order._id, product: data }, {
+      onSuccess: () => {
+        setIsAddingProduct(false)
+        productForm.reset()
+      },
+    })
   }
 
   const handleEditProduct = (data: ProductFormData) => {
     if (!editingProduct?._id) return
-    editProduct.mutate(
-      { orderId: order._id, productId: editingProduct._id, product: data },
-      {
-        onSuccess: () => {
-          setEditingProduct(null)
-          productForm.reset()
-        },
-      }
-    )
+    editProduct.mutate({ orderId: order._id, productId: editingProduct._id, product: data }, {
+      onSuccess: () => {
+        setEditingProduct(null)
+        productForm.reset()
+      },
+    })
   }
 
   const handleDeleteProduct = (productId: string) => {
@@ -207,18 +250,25 @@ export function OrderDetailsModal({
   }
 
   const startEditProduct = (product: Product) => {
+    setIsAddingProduct(false)
     setEditingProduct(product)
     productForm.reset({
-      name: product.name,
-      price: product.price,
-      qty: product.qty,
-      nameToPrint: product.nameToPrint || '',
-      nameOnOtherSide: product.nameOnOtherSide || '',
-      mobileModel: product.mobileModel || '',
-      size: product.size || '',
-      color: product.color || '',
-      refills: product.refills || '',
-      giftWrap: product.giftWrap || '',
+      name: product.name, price: product.price, qty: product.qty,
+      size: product.size || '', nameToPrint: product.nameToPrint || '',
+      nameOnOtherSide: product.nameOnOtherSide || '', giftWrap: product.giftWrap || '',
+      refills: product.refills || '', color: product.color || '',
+      mobileModel: product.mobileModel || '', printingSide: product.printingSide || '',
+      language: product.language || '', picture: product.picture || '',
+    })
+  }
+
+  const startAddProduct = () => {
+    setEditingProduct(null)
+    setIsAddingProduct(true)
+    productForm.reset({
+      name: '', price: 0, qty: 1, size: '',
+      nameToPrint: '', nameOnOtherSide: '', giftWrap: '', refills: '',
+      color: '', mobileModel: '', printingSide: '', language: '', picture: '',
     })
   }
 
@@ -228,535 +278,340 @@ export function OrderDetailsModal({
     productForm.reset()
   }
 
+  const lastUpdatedByName =
+    typeof order.lastUpdatedBy === 'object' && order.lastUpdatedBy !== null
+      ? (order.lastUpdatedBy as { name?: string }).name
+      : (order.lastUpdatedBy as string | undefined)
+
+  const showProductForm = isAddingProduct || !!editingProduct
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Package className="size-5" />
-              Order #{order.orderId}
-              {order.cn && (
-                <Badge variant="outline" className="ml-2">
-                  CN: {order.cn}
-                </Badge>
-              )}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>Cn No: {order.cn ?? '—'}</DialogTitle>
+          </DialogHeader>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details">Order Details</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
+          {/* ───────── Customer Information ───────── */}
+          <section className="rounded-2xl border-2 border-foreground/80 overflow-hidden">
+            <div className="relative p-5">
+              <div className="absolute right-4 top-4">
+                {!isEditing ? (
+                  <Button size="sm" onClick={() => setIsEditing(true)}>
+                    <Pencil className="size-4 mr-2" />Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setIsEditing(false); billingForm.reset() }}
+                    >
+                      <X className="size-4 mr-1" />Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => billingForm.handleSubmit((d) => handleSaveBilling(d as BillingFormData))()}
+                      disabled={updateOrder.isPending}
+                    >
+                      {updateOrder.isPending ? <Spinner size="sm" className="mr-1" /> : <Check className="size-4 mr-1" />}
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-          {/* Order Details Tab */}
-          <TabsContent value="details" className="space-y-6">
-            <div className="flex justify-end">
+              <h3 className="text-center text-2xl font-semibold mb-6">Customer Information</h3>
+
               {!isEditing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Pencil className="size-4 mr-2" />
-                  Edit
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsEditing(false)
-                      billingForm.reset()
-                    }}
-                  >
-                    <X className="size-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => billingForm.handleSubmit((data) => handleSaveBilling(data as BillingFormData))()}
-                    disabled={updateOrder.isPending}
-                  >
-                    {updateOrder.isPending ? (
-                      <Spinner size="sm" className="mr-2" />
-                    ) : (
-                      <Check className="size-4 mr-2" />
-                    )}
-                    Save
-                  </Button>
-                </div>
-              )}
-            </div>
+                <div className="grid gap-x-6 gap-y-3 sm:grid-cols-3 text-sm">
+                  <p><strong>First Name: </strong>{order.billing.first_name}</p>
+                  <p><strong>Last Name: </strong>{order.billing.last_name}</p>
+                  <p className="text-lg"><strong>Amount: </strong>Rs {order.total}</p>
 
-            {isEditing ? (
-              <form className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <p><strong>Phone No: </strong>{order.billing.phone}</p>
+                  <p><strong>Email: </strong>{order.billing.email || '—'}</p>
+                  <p><strong>Last Updated By: </strong>{lastUpdatedByName || '—'}</p>
+
+                  <p className="sm:col-span-2"><strong>Address: </strong>{order.billing.address}</p>
+                  <p><strong>City: </strong>{order.billing.city}</p>
+
+                  {order.notes && (
+                    <p className="sm:col-span-2"><strong>Customer Notes: </strong>{order.notes}</p>
+                  )}
+                  {order.remarks && (
+                    <p className="sm:col-span-3"><strong>Remarks: </strong>{order.remarks}</p>
+                  )}
+                </div>
+              ) : (
+                <form className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1">
                     <Label htmlFor="first_name">First Name</Label>
-                    <Input
-                      id="first_name"
-                      {...billingForm.register('first_name')}
-                    />
+                    <Input id="first_name" {...billingForm.register('first_name')} />
                     {billingForm.formState.errors.first_name && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.first_name.message}
-                      </p>
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.first_name.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label htmlFor="last_name">Last Name</Label>
-                    <Input
-                      id="last_name"
-                      {...billingForm.register('last_name')}
-                    />
+                    <Input id="last_name" {...billingForm.register('last_name')} />
                     {billingForm.formState.errors.last_name && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.last_name.message}
-                      </p>
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.last_name.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="total">Amount</Label>
+                    <Input id="total" type="number" {...billingForm.register('total', { valueAsNumber: true })} />
+                    {billingForm.formState.errors.total && (
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.total.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone">Phone No</Label>
                     <Input id="phone" {...billingForm.register('phone')} />
                     {billingForm.formState.errors.phone && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.phone.message}
-                      </p>
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.phone.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...billingForm.register('email')}
-                    />
+                    <Input id="email" type="email" {...billingForm.register('email')} />
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      {...billingForm.register('address')}
-                    />
-                    {billingForm.formState.errors.address && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.address.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label htmlFor="city">City</Label>
                     <Input id="city" {...billingForm.register('city')} />
                     {billingForm.formState.errors.city && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.city.message}
-                      </p>
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.city.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="total">Total Amount</Label>
-                    <Input
-                      id="total"
-                      type="number"
-                      {...billingForm.register('total')}
-                    />
-                    {billingForm.formState.errors.total && (
-                      <p className="text-xs text-destructive">
-                        {billingForm.formState.errors.total.message}
-                      </p>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input id="address" {...billingForm.register('address')} />
+                    {billingForm.formState.errors.address && (
+                      <p className="text-xs text-destructive">{billingForm.formState.errors.address.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-3">
                     <Label htmlFor="remarks">Remarks</Label>
-                    <Textarea
-                      id="remarks"
-                      {...billingForm.register('remarks')}
-                      rows={3}
-                    />
+                    <Input id="remarks" {...billingForm.register('remarks')} />
                   </div>
-                </div>
-              </form>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-3">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <User className="size-4 text-primary" />
-                    Customer Details
-                  </h4>
-                  <div className="space-y-2 text-sm rounded-lg bg-muted/50 p-3 border border-border/50">
-                    <p className="font-medium text-foreground">
-                      {order.billing.first_name} {order.billing.last_name}
-                    </p>
-                    <p className="flex items-center gap-2 text-foreground">
-                      <Phone className="size-3 text-muted-foreground" />
-                      {order.billing.phone}
-                    </p>
-                    {order.billing.email && (
-                      <p className="flex items-center gap-2 text-foreground">
-                        <Mail className="size-3 text-muted-foreground" />
-                        {order.billing.email}
-                      </p>
-                    )}
-                    <p className="flex items-center justify-between pt-2 border-t border-border/50">
-                      <span className="text-muted-foreground">Total:</span>
-                      <strong className="text-lg text-primary">{formatCurrency(order.total)}</strong>
-                    </p>
-                    {order.remarks && (
-                      <p className="pt-2 border-t border-border/50">
-                        <span className="text-muted-foreground block mb-1">Remarks:</span>
-                        <span className="text-foreground">{order.remarks}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <MapPin className="size-4 text-primary" />
-                    Shipping Address
-                  </h4>
-                  <div className="space-y-2 text-sm rounded-lg bg-muted/50 p-3 border border-border/50">
-                    {order.billing.address && (
-                      <p className="font-medium text-foreground">{order.billing.address}</p>
-                    )}
-                    <p className="text-foreground">
-                      <span className="font-medium">{order.billing.city}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Dispatch Details */}
-            {order.dispatchDetails && order.dispatchDetails.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Truck className="size-4 text-primary" />
-                    Dispatch Details
-                  </h4>
-                  <div className="space-y-2">
-                    {order.dispatchDetails.map((dispatch, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div className="space-y-1">
-                          <p className="font-medium capitalize">
-                            {dispatch.company}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Tracking: {dispatch.trackingId}
-                          </p>
-                        </div>
-                        <Badge variant="outline">{dispatch.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Order Notes */}
-            {order.notes && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <h4 className="font-medium">Notes</h4>
-                  <p className="text-sm text-muted-foreground">{order.notes}</p>
-                </div>
-              </>
-            )}
-          </TabsContent>
-
-          {/* Products Tab */}
-          <TabsContent value="products" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium flex items-center gap-2">
-                <Package className="size-4 text-primary" />
-                Products ({order.products.length})
-              </h4>
-              {!isAddingProduct && !editingProduct && (
-                <Button size="sm" onClick={() => setIsAddingProduct(true)}>
-                  <Plus className="size-4 mr-2" />
-                  Add Product
-                </Button>
+                </form>
               )}
             </div>
 
-            {/* Add/Edit Product Form */}
-            {(isAddingProduct || editingProduct) && (
-              <div className="rounded-lg border p-4 space-y-4">
-                <h5 className="font-medium">
-                  {isAddingProduct ? 'Add New Product' : 'Edit Product'}
-                </h5>
-                <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="name" className="text-xs">
-                      Product Name *
-                    </Label>
-                    <Input
-                      id="name"
-                      {...productForm.register('name')}
-                      placeholder="Product name"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="price" className="text-xs">
-                      Price *
-                    </Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      {...productForm.register('price')}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="qty" className="text-xs">
-                      Quantity *
-                    </Label>
-                    <Input
-                      id="qty"
-                      type="number"
-                      {...productForm.register('qty')}
-                      placeholder="1"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="nameToPrint" className="text-xs">
-                      Name to Print
-                    </Label>
-                    <Input
-                      id="nameToPrint"
-                      {...productForm.register('nameToPrint')}
-                      placeholder="Name to print"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="nameOnOtherSide" className="text-xs">
-                      Name on Other Side
-                    </Label>
-                    <Input
-                      id="nameOnOtherSide"
-                      {...productForm.register('nameOnOtherSide')}
-                      placeholder="Other side name"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="mobileModel" className="text-xs">
-                      Model
-                    </Label>
-                    <Input
-                      id="mobileModel"
-                      {...productForm.register('mobileModel')}
-                      placeholder="Model"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="size" className="text-xs">
-                      Size
-                    </Label>
-                    <Input
-                      id="size"
-                      {...productForm.register('size')}
-                      placeholder="Size"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="color" className="text-xs">
-                      Color
-                    </Label>
-                    <Input
-                      id="color"
-                      {...productForm.register('color')}
-                      placeholder="Color"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="refills" className="text-xs">
-                      Refills
-                    </Label>
-                    <Input
-                      id="refills"
-                      {...productForm.register('refills')}
-                      placeholder="Refills"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="giftWrap" className="text-xs">
-                      Gift Wrap
-                    </Label>
-                    <Input
-                      id="giftWrap"
-                      {...productForm.register('giftWrap')}
-                      placeholder="Gift wrap"
-                    />
-                  </div>
-                </form>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={cancelProductEdit}>
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => productForm.handleSubmit((data) => 
-                      isAddingProduct 
-                        ? handleAddProduct(data as ProductFormData) 
-                        : handleEditProduct(data as ProductFormData)
-                    )()}
-                    disabled={addProduct.isPending || editProduct.isPending}
-                  >
-                    {(addProduct.isPending || editProduct.isPending) && (
-                      <Spinner size="sm" className="mr-2" />
-                    )}
-                    {isAddingProduct ? 'Add Product' : 'Update Product'}
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Status bar */}
+            <div className={cx('py-2 text-center font-semibold capitalize', getStatusBarColor(order.status))}>
+              {order.status}
+            </div>
+          </section>
 
-            {/* Products Table */}
+          {/* ───────── Order Details (Products) ───────── */}
+          <section className="space-y-3">
+            <h3 className="text-center text-2xl font-semibold">Order Details</h3>
+
+            <Button size="sm" onClick={startAddProduct}>
+              <Plus className="size-4 mr-2" />Add
+            </Button>
+
+            {/* Products table — dynamic columns */}
             <div className="rounded-lg border">
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-center">Qty</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {productColumns.map((col) => (
+                      <TableHead
+                        key={col}
+                        className={cx(
+                          'whitespace-normal break-words text-xs',
+                          col === 'name' ? 'w-[22%]' :
+                          col === 'price' || col === 'qty' ? 'w-[7%]' :
+                          'w-[12%]'
+                        )}
+                      >
+                        {PRODUCT_FIELD_LABELS[col]}
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-[10%] text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {order.products.map((product, index) => (
-                    <TableRow key={product._id || index}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          {product.nameToPrint && (
-                            <p className="text-xs text-muted-foreground">
-                              Print: {product.nameToPrint}
-                            </p>
-                          )}
-                          {product.nameOnOtherSide && (
-                            <p className="text-xs text-muted-foreground">
-                              Other Side: {product.nameOnOtherSide}
-                            </p>
-                          )}
-                          {product.mobileModel && (
-                            <p className="text-xs text-muted-foreground">
-                              Model: {product.mobileModel}
-                            </p>
-                          )}
-                          {product.size && (
-                            <p className="text-xs text-muted-foreground">
-                              Size: {product.size}
-                            </p>
-                          )}
-                          {product.color && (
-                            <p className="text-xs text-muted-foreground">
-                              Color: {product.color}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">{product.qty}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.price)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(product.price * product.qty)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            onClick={() => startEditProduct(product)}
-                            disabled={isAddingProduct || !!editingProduct}
-                          >
-                            <Pencil className="size-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-destructive hover:text-destructive"
-                            onClick={() =>
-                              product._id && handleDeleteProduct(product._id)
-                            }
-                            disabled={
-                              deleteProduct.isPending ||
-                              isAddingProduct ||
-                              !!editingProduct
-                            }
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
+                  {order.products.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={productColumns.length + 1} className="text-center py-6 text-muted-foreground">
+                        No products
                       </TableCell>
                     </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-right font-medium">
-                      Total
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {formatCurrency(order.total)}
-                    </TableCell>
-                    <TableCell />
-                  </TableRow>
+                  ) : (
+                    order.products.map((product, index) => (
+                      <TableRow key={product._id || index}>
+                        {productColumns.map((col) => (
+                          <TableCell
+                            key={col}
+                            className={cx(
+                              'whitespace-normal break-words text-sm align-top',
+                              col === 'name' ? 'font-medium' : ''
+                            )}
+                          >
+                            {col === 'price'
+                              ? product.price
+                              : (product[col] as string | number | undefined) ?? ''}
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-right whitespace-nowrap align-top">
+                          <button
+                            className="text-primary hover:underline disabled:opacity-50"
+                            onClick={() => startEditProduct(product)}
+                          >
+                            Edit
+                          </button>
+                          <span className="mx-2 text-muted-foreground">|</span>
+                          <button
+                            className="text-destructive hover:underline disabled:opacity-50"
+                            onClick={() => product._id && handleDeleteProduct(product._id)}
+                            disabled={deleteProduct.isPending}
+                          >
+                            Delete
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
-          </TabsContent>
+          </section>
 
-          {/* History Tab */}
-          <TabsContent value="history" className="space-y-4">
-            <h4 className="font-medium flex items-center gap-2">
-              <History className="size-4 text-primary" />
-              Order History
-            </h4>
+          {/* ───────── Dispatch Information ───────── */}
+          {order.dispatchDetails && order.dispatchDetails.length > 0 && (
+            <section className="rounded-2xl border-2 border-dashed border-foreground/70 p-5">
+              <h3 className="text-center text-2xl font-semibold mb-4">Dispatch Information</h3>
+              {order.dispatchDetails.map((detail, index) => (
+                <div key={index} className="grid gap-3 sm:grid-cols-2 text-sm mb-4 last:mb-0">
+                  <p>
+                    <strong>Tracking ID: </strong>
+                    <button
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                      onClick={() => setTrackingModal({ trackingId: detail.trackingId, company: detail.company })}
+                    >
+                      {detail.trackingId}
+                      <ExternalLink className="size-3" />
+                    </button>
+                  </p>
+                  <p><strong>Dispatch Date: </strong>{(detail.dispatchDate || detail.date) ? formatDate(detail.dispatchDate || detail.date || '') : '—'}</p>
+                  <p><strong>Company: </strong><span className="capitalize">{detail.company}</span></p>
+                  <p><strong>Dispatched By: </strong>{detail.dispatchBy || '—'}</p>
+                </div>
+              ))}
+            </section>
+          )}
 
-            {order.orderLog && order.orderLog.length > 0 ? (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {order.orderLog.map((log, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start justify-between text-sm border-l-2 border-primary/30 pl-3 py-2 bg-muted/30 rounded-r-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{log.action}</p>
-                      {log.description && (
-                        <p className="text-muted-foreground">{log.description}</p>
-                      )}
-                      {log.user && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          By: {log.user}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap ml-4">
-                      {formatDate(log.date)}
-                    </p>
-                  </div>
-                ))}
+          {/* ───────── History ───────── */}
+          <section className="space-y-3">
+            <h3 className="text-center text-2xl font-semibold">History</h3>
+            <div className="rounded-lg border">
+              <button
+                className="flex w-full items-center justify-between p-4 text-left"
+                onClick={() => setHistoryOpen((o) => !o)}
+              >
+                <span className="font-medium">Change History</span>
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Click here to check the change history of this order
+                  {historyOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                </span>
+              </button>
+
+              {historyOpen && (
+                <div className="border-t">
+                  {order.orderLog && order.orderLog.length > 0 ? (
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60%]">Action</TableHead>
+                          <TableHead className="w-[20%]">Name</TableHead>
+                          <TableHead className="w-[20%]">Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {order.orderLog.map((log, index) => {
+                          const logUser = log.updatedBy?.name || log.user || '—'
+                          const logDate = log.dateCreated || log.date
+                          return (
+                            <TableRow key={index}>
+                              <TableCell className="whitespace-normal break-words text-sm align-top">{log.action}{log.description ? ` ${log.description}` : ''}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm whitespace-normal break-words align-top">{logUser}</TableCell>
+                              <TableCell className="whitespace-nowrap text-sm align-top">{logDate ? formatDate(logDate) : '—'}</TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="p-4 text-sm text-muted-foreground">No history available</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={onClose}>Okay</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Add / Edit dialog */}
+      <Dialog open={showProductForm} onOpenChange={(open) => { if (!open) cancelProductEdit() }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isAddingProduct ? 'Add Product' : 'Edit Product'}</DialogTitle>
+          </DialogHeader>
+
+          <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {PRODUCT_FORM_FIELDS.map((field) => (
+              <div key={field.id} className="space-y-1">
+                <Label htmlFor={`pf-${field.id}`} className="text-xs text-muted-foreground">
+                  {field.label}
+                </Label>
+                <Input
+                  id={`pf-${field.id}`}
+                  type={field.type || 'text'}
+                  placeholder={field.label}
+                  {...productForm.register(
+                    field.id,
+                    field.type === 'number' ? { valueAsNumber: true } : {}
+                  )}
+                />
               </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No history available
-              </p>
-            )}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            ))}
+          </form>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelProductEdit}>Cancel</Button>
+            <Button
+              onClick={() => productForm.handleSubmit((d) =>
+                isAddingProduct
+                  ? handleAddProduct(d as ProductFormData)
+                  : handleEditProduct(d as ProductFormData)
+              )()}
+              disabled={addProduct.isPending || editProduct.isPending}
+            >
+              {(addProduct.isPending || editProduct.isPending) && <Spinner size="sm" className="mr-2" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {trackingModal && (
+        <TrackingModal
+          trackingId={trackingModal.trackingId}
+          company={trackingModal.company}
+          open={!!trackingModal}
+          onClose={() => setTrackingModal(null)}
+        />
+      )}
+    </>
   )
 }

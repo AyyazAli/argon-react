@@ -5,6 +5,99 @@ import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
 import type { Order, CourierCompany } from '@/types'
 
+export function useTraxTracking(trackingId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tracking', 'trax', trackingId],
+    queryFn: () => ordersApi.traxTrackingHistory(trackingId),
+    enabled: enabled && !!trackingId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false,
+  })
+}
+
+export function useLeopardTracking(trackingId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tracking', 'leopard', trackingId],
+    queryFn: () => ordersApi.leopardTrackingHistory(trackingId),
+    enabled: enabled && !!trackingId,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  })
+}
+
+export function useBookManual() {
+  const { replaceOrder, clearSelection } = useOrderStore()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ orderIds, company }: { orderIds: string[]; company: string }) =>
+      ordersApi.bookManual(orderIds, company),
+    onSuccess: (data) => {
+      if (Array.isArray(data.data)) {
+        data.data.forEach((order: Order) => replaceOrder(order))
+      }
+      clearSelection()
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Orders manually booked successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to book orders manually')
+    },
+  })
+}
+
+export function usePostexTracking(trackingId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tracking', 'postex', trackingId],
+    queryFn: () => ordersApi.postexTrackingHistory(trackingId),
+    enabled: enabled && !!trackingId,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  })
+}
+
+export function usePostexCities() {
+  return useQuery({
+    queryKey: ['postexCities'],
+    queryFn: async () => {
+      const response = await ordersApi.getPostexCities()
+      return response.data
+    },
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
+export function useCreateTraxReceivingSheet() {
+  return useMutation({
+    mutationFn: (trackingIds: string[]) => ordersApi.createTraxReceivingSheet(trackingIds),
+    onSuccess: (data) => {
+      toast.success(`Receiving sheet generated. Sheet ID: ${data.data}`)
+    },
+    onError: (error: Error) => toast.error(error.message || 'Failed to create receiving sheet'),
+  })
+}
+
+export function useGeneratePrintfileFromCSV() {
+  const { replaceOrder } = useOrderStore()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => ordersApi.generatePrintfileFromCSV(file),
+    onSuccess: async (data) => {
+      if (data.data.orders && data.data.orders.length > 0) {
+        data.data.orders.forEach((order: Order) => replaceOrder(order))
+      }
+      if (data.data.file) {
+        const blob = await ordersApi.downloadFile(data.data.file)
+        saveAs(blob, `print-file-csv-${new Date().toISOString().split('T')[0]}.xlsx`)
+      }
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      toast.success('Print file generated from CSV successfully')
+    },
+    onError: (error: Error) => toast.error(error.message || 'Error generating print file from CSV'),
+  })
+}
+
 export function useOrders() {
   const { setOrders, setLoading } = useOrderStore()
 
@@ -87,6 +180,8 @@ export function useBookOrders() {
           return ordersApi.bookByLahore(orderIds)
         case 'printfile':
           return ordersApi.generatePrintfile(orderIds)
+        case 'postex':
+          return ordersApi.bookByPostex(orderIds)
         default:
           throw new Error('Invalid company')
       }

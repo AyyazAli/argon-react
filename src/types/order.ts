@@ -10,6 +10,9 @@ export interface Product {
   mobileModel?: string
   size?: string
   color?: string
+  printingSide?: string
+  language?: string
+  picture?: string
 }
 
 export interface Billing {
@@ -28,14 +31,18 @@ export interface Billing {
 export interface DispatchDetail {
   company: string
   trackingId: string
-  date: string
-  status: string
+  date?: string
+  status?: string
+  dispatchDate?: string
+  dispatchBy?: string
 }
 
 export interface OrderLog {
   action: string
-  date: string
-  user: string
+  date?: string
+  dateCreated?: string
+  user?: string
+  updatedBy?: { name: string }
   description?: string
 }
 
@@ -47,7 +54,9 @@ export interface Order {
   billing: Billing
   products: Product[]
   total: number
-  date_created: string
+  dateCreated?: string
+  date_created?: string
+  dateModified?: string
   date_modified?: string
   source?: string
   notes?: string
@@ -80,7 +89,7 @@ export interface OrderStats {
   cancelled: number
 }
 
-export type CourierCompany = 'trax' | 'leopard' | 'lahore' | 'printfile'
+export type CourierCompany = 'trax' | 'leopard' | 'lahore' | 'printfile' | 'postex' | 'manual'
 
 export interface City {
   id: string
