@@ -144,16 +144,27 @@ export function useFetchLatestOrders() {
 }
 
 export function useUpdateOrderStatus() {
+  const { orders, setOrders } = useOrderStore()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
       ordersApi.updateStatus(orderId, status),
+    onMutate: ({ orderId, status }) => {
+      // Optimistic update — reflect the new status in the store immediately
+      const updated = orders.map((o) =>
+        o._id === orderId ? { ...o, status: status as Order['status'] } : o
+      )
+      setOrders(updated)
+      return { previousOrders: orders }
+    },
     onSuccess: (_, variables) => {
-      toast.success(`Order status updated to ${variables.status}`)
+      toast.success(`Status updated to ${variables.status}`)
       queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Revert on failure
+      if (context?.previousOrders) setOrders(context.previousOrders)
       toast.error(error.message || 'Failed to update order status')
     },
   })
