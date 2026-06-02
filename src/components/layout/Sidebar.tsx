@@ -182,13 +182,13 @@ const navGroups: NavGroup[] = [
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation()
-  const { role, business } = useAuthStore()
+  const { roles, business, hasRole } = useAuthStore()
   const businessLogo = business ? BUSINESS_LOGOS[business.toLowerCase()] : undefined
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  const hasAccess = (roles?: string[]) => {
-    if (!roles || roles.length === 0) return true
-    return role && roles.includes(role)
+  const hasAccess = (allowedRoles?: string[]) => {
+    if (!allowedRoles || allowedRoles.length === 0) return true
+    return hasRole(...allowedRoles)
   }
 
   const isActive = (path: string) => {
@@ -207,7 +207,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     if (activeGroup) {
       setExpandedGroups((prev) => new Set(prev).add(activeGroup.title))
     }
-  }, [location.pathname, role])
+  }, [location.pathname, roles])
 
   const toggleGroup = (groupTitle: string) => {
     setExpandedGroups((prev) => {

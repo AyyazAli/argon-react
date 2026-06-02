@@ -35,7 +35,7 @@ const routeTitles: Record<string, string> = {
 
 export function Navbar({ onMenuClick }: NavbarProps) {
   const location = useLocation()
-  const { logout, role } = useAuthStore()
+  const { logout } = useAuthStore()
   const { data: businessInfo } = useBusinessInfo()
 
   const pageTitle = routeTitles[location.pathname] || 'Dashboard'
@@ -79,11 +79,8 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium capitalize">
                   {businessInfo?.business || 'User'}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {role || 'user'}
                 </p>
               </div>
             </DropdownMenuLabel>

@@ -7,9 +7,9 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
 
-  if (!role || !allowedRoles.includes(role)) {
+  if (!hasRole(...allowedRoles)) {
     return <Navigate to="/dashboard" replace />
   }
 

@@ -92,13 +92,13 @@ const getStatusColor = (status: QuotationStatus) => {
 
 export function QuotationsPage() {
   const { data: quotations, isLoading } = useQuotations()
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
   const createQuotation = useCreateQuotation()
   const updateQuotation = useUpdateQuotation()
   const updateStatus = useUpdateQuotationStatus()
   const deleteQuotation = useDeleteQuotation()
 
-  const isAdmin = role === 'admin' || role === 'superAdmin'
+  const isAdmin = hasRole('admin', 'superAdmin')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')

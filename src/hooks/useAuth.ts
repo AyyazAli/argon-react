@@ -16,7 +16,7 @@ export function useLogin() {
         token: data.token,
         expiresIn: data.expiresIn,
         userId: data.userId,
-        role: data.role,
+        roles: data.roles ?? (data.role ? [data.role] : []),
       })
       setBusiness(variables.business)
       toast.success('Login successful')

@@ -54,12 +54,12 @@ export function LiabilityPage() {
   const { data: vendors } = useVendors()
   const createLiability = useCreateLiability()
   const deleteLiability = useDeleteLiability()
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [liabilityToDelete, setLiabilityToDelete] = useState<string | null>(null)
 
-  const canDelete = role === 'admin' || role === 'superAdmin'
+  const canDelete = hasRole('admin', 'superAdmin')
 
   const handleDeleteClick = (id: string) => {
     setLiabilityToDelete(id)

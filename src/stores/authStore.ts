@@ -6,7 +6,7 @@ interface AuthState {
   token: string | null
   expiresIn: string | null
   userId: string | null
-  role: string | null
+  roles: string[]           // all roles the user has for the current business
   business: string | null
   isAuthenticated: boolean
 
@@ -15,12 +15,13 @@ interface AuthState {
     token: string
     expiresIn: number
     userId: string
-    role: string
+    roles: string[]
   }) => void
   setBusiness: (business: string) => void
   setBusinessInfo: (info: BusinessInfo) => void
   logout: () => void
   checkAuthExpiry: () => boolean
+  hasRole: (...check: string[]) => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -29,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       expiresIn: null,
       userId: null,
-      role: null,
+      roles: [],
       business: null,
       isAuthenticated: false,
 
@@ -42,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
           token: data.token,
           expiresIn: expirationDate,
           userId: data.userId,
-          role: data.role,
+          roles: data.roles ?? [],
           isAuthenticated: true,
         })
       },
@@ -54,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
       setBusinessInfo: (info) => {
         set({
           business: info.business,
-          role: info.role,
+          roles: info.roles ?? [],
         })
       },
 
@@ -63,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           expiresIn: null,
           userId: null,
-          role: null,
+          roles: [],
           business: null,
           isAuthenticated: false,
         })
@@ -83,6 +84,12 @@ export const useAuthStore = create<AuthState>()(
 
         return true
       },
+
+      // True if the user has ANY of the given roles
+      hasRole: (...check) => {
+        const { roles } = get()
+        return check.some((r) => roles.includes(r))
+      },
     }),
     {
       name: 'auth-storage',
@@ -90,11 +97,10 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         expiresIn: state.expiresIn,
         userId: state.userId,
-        role: state.role,
+        roles: state.roles,
         business: state.business,
         isAuthenticated: state.isAuthenticated,
       }),
     }
   )
 )
-

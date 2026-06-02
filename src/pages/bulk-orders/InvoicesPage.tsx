@@ -82,7 +82,7 @@ export function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: invoices, isLoading } = useInvoices()
   const { data: quotations } = useQuotations()
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
   const createInvoice = useCreateInvoice()
   const updateInvoice = useUpdateInvoice()
   const updateInvoiceStatus = useUpdateInvoiceStatus()
@@ -105,7 +105,7 @@ export function InvoicesPage() {
   const [newStatus, setNewStatus] = useState<InvoiceStatus>('sent')
   const [statusNotes, setStatusNotes] = useState('')
 
-  const isAdmin = role === 'admin' || role === 'superAdmin'
+  const isAdmin = hasRole('admin', 'superAdmin')
 
   // Handle quotation param from URL (when clicking "Create Invoice" from Quotations page)
   useEffect(() => {

@@ -52,12 +52,12 @@ export function CategoriesPage() {
   const { data: categories, isLoading } = useCategories()
   const createCategory = useCreateCategory()
   const deleteCategory = useDeleteCategory()
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
-  const canDelete = role === 'admin' || role === 'superAdmin'
+  const canDelete = hasRole('admin', 'superAdmin')
 
   const handleDeleteClick = (id: string) => {
     setCategoryToDelete(id)

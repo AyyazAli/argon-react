@@ -9,7 +9,8 @@ export interface AuthResponse {
   token: string
   expiresIn: number
   userId: string
-  role: string
+  role?: string        // legacy single role (still sent by backend, unused on FE)
+  roles?: string[]     // all roles for the business
 }
 
 export interface LoginCredentials {
@@ -20,7 +21,8 @@ export interface LoginCredentials {
 
 export interface BusinessInfo {
   business: string
-  role: string
+  role?: string        // legacy single role (still sent by backend, unused on FE)
+  roles?: string[]     // all roles for the business
 }
 
 

@@ -43,12 +43,12 @@ export function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts()
   const createAccount = useCreateAccount()
   const deleteAccount = useDeleteAccount()
-  const { role } = useAuthStore()
+  const hasRole = useAuthStore((s) => s.hasRole)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null)
 
-  const canDelete = role === 'admin' || role === 'superAdmin'
+  const canDelete = hasRole('admin', 'superAdmin')
 
   const handleDeleteClick = (id: string) => {
     setAccountToDelete(id)
