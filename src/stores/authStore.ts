@@ -15,7 +15,8 @@ interface AuthState {
     token: string
     expiresIn: number
     userId: string
-    roles: string[]
+    role?: string      // fallback for when roles array isn't present
+    roles?: string[]
   }) => void
   setBusiness: (business: string) => void
   setBusinessInfo: (info: BusinessInfo) => void
@@ -43,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
           token: data.token,
           expiresIn: expirationDate,
           userId: data.userId,
-          roles: data.roles ?? [],
+          roles: data.roles?.length ? data.roles : (data.role ? [data.role] : []),
           isAuthenticated: true,
         })
       },
@@ -55,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
       setBusinessInfo: (info) => {
         set({
           business: info.business,
-          roles: info.roles ?? [],
+          roles: info.roles?.length ? info.roles : (info.role ? [info.role] : []),
         })
       },
 
