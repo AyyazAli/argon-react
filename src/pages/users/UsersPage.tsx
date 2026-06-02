@@ -126,11 +126,14 @@ export function UsersPage() {
 
   const handleAddBusinessAccess = () => {
     if (selectedBusiness && selectedRole) {
-      // Check if this business is already added
-      if (!businessAccessList.some(ba => ba.name === selectedBusiness)) {
+      // Block only exact duplicates (same business + same role)
+      const alreadyExists = businessAccessList.some(
+        ba => ba.name === selectedBusiness && ba.role === selectedRole
+      )
+      if (!alreadyExists) {
         setBusinessAccessList([...businessAccessList, { name: selectedBusiness, role: selectedRole }])
-        setSelectedBusiness('')
         setSelectedRole('user')
+        // Keep selectedBusiness so user can quickly add another role to same business
       }
     }
   }
@@ -262,17 +265,29 @@ export function UsersPage() {
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {user.businessAccess.length > 0 ? (
-                              user.businessAccess.map((ba: { name: string; role: string }, idx: number) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {ba.name}: {ba.role}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground text-sm">No access</span>
-                            )}
-                          </div>
+                          {user.businessAccess.length > 0 ? (
+                            <div className="space-y-1">
+                              {businesses
+                                .filter(b => user.businessAccess.some((ba: { name: string; role: string }) => ba.name === b.value))
+                                .map(b => {
+                                  const roleEntries = user.businessAccess.filter(
+                                    (ba: { name: string; role: string }) => ba.name === b.value
+                                  )
+                                  return (
+                                    <div key={b.value} className="flex items-center gap-1 flex-wrap">
+                                      <span className="text-xs text-muted-foreground font-medium w-20 shrink-0">{b.label}:</span>
+                                      {roleEntries.map((ba: { name: string; role: string }, idx: number) => (
+                                        <Badge key={idx} variant="secondary" className="text-xs">
+                                          {roles.find(r => r.value === ba.role)?.label || ba.role}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )
+                                })}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">No access</span>
+                          )}
                         </TableCell>
                         <TableCell>{formatDate(new Date().toISOString())}</TableCell>
                         <TableCell className="text-right">
@@ -362,13 +377,11 @@ export function UsersPage() {
                         <SelectValue placeholder="Select business" />
                       </SelectTrigger>
                       <SelectContent>
-                        {businesses
-                          .filter(b => !businessAccessList.some(ba => ba.name === b.value))
-                          .map((business) => (
-                            <SelectItem key={business.value} value={business.value}>
-                              {business.label}
-                            </SelectItem>
-                          ))}
+                        {businesses.map((business) => (
+                          <SelectItem key={business.value} value={business.value}>
+                            {business.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -393,30 +406,42 @@ export function UsersPage() {
                     </Button>
                   </div>
                   {businessAccessList.length > 0 && (
-                    <div className="space-y-2">
-                      {businessAccessList.map((ba, index) => {
-                        const business = businesses.find(b => b.value === ba.name)
-                        const role = roles.find(r => r.value === ba.role)
-                        return (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 bg-muted rounded-md"
-                          >
-                            <span className="text-sm">
-                              {business?.label || ba.name}: {role?.label || ba.role}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleRemoveBusinessAccess(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )
-                      })}
+                    <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                      {/* Group entries by business name */}
+                      {businesses
+                        .filter(b => businessAccessList.some(ba => ba.name === b.value))
+                        .map(b => {
+                          const entries = businessAccessList
+                            .map((ba, idx) => ({ ...ba, idx }))
+                            .filter(ba => ba.name === b.value)
+                          return (
+                            <div key={b.value}>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                {b.label}
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {entries.map(({ role, idx }) => {
+                                  const roleLabel = roles.find(r => r.value === role)?.label || role
+                                  return (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium"
+                                    >
+                                      {roleLabel}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveBusinessAccess(idx)}
+                                        className="hover:text-destructive ml-0.5"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
                     </div>
                   )}
                 </div>
