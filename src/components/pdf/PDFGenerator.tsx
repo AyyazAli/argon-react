@@ -27,6 +27,10 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
     position: "relative",
+    // Reserve space for the fixed header/footer on EVERY page so flowing
+    // content (and page 2+) never overlaps them.
+    paddingTop: 150,
+    paddingBottom: 100,
   },
   // Watermark - very light text behind content, diagonal
   watermarkWrapper: {
@@ -47,11 +51,13 @@ const styles = StyleSheet.create({
     letterSpacing: 10,
     transform: "rotate(-45deg)",
   },
-  // Stamp image at bottom right, above bottom note
+  // Stamp image — flows at the end of the content, right-aligned, so it
+  // appears exactly once at the true end of the document (last page only).
   stampContainer: {
-    position: "absolute",
-    bottom: 118,
-    right: 45,
+    alignItems: "flex-end",
+    marginTop: 12,
+    marginBottom: 4,
+    paddingRight: 5,
     zIndex: 2,
   },
   stampImage: {
@@ -60,11 +66,13 @@ const styles = StyleSheet.create({
     objectFit: "contain",
     opacity: 0.9,
   },
-  // Modern Header with curve
+  // Modern Header with curve — pinned to the top of every page (fixed)
   headerContainer: {
-    position: "relative",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     height: 150,
-    marginBottom: 15,
     zIndex: 1,
   },
   headerBackground: {
@@ -127,7 +135,6 @@ const styles = StyleSheet.create({
   // Body content
   bodyContent: {
     paddingHorizontal: 40,
-    paddingBottom: 110,
     zIndex: 1,
   },
   section: {
@@ -528,8 +535,8 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
           <Text style={styles.watermarkText}>PENHOUSE</Text>
         </View>
 
-        {/* Modern Header with Curve */}
-        <View style={styles.headerContainer}>
+        {/* Modern Header with Curve - repeats on every page */}
+        <View style={styles.headerContainer} fixed>
           <View style={styles.headerBackground}>
             <HeaderCurve />
           </View>
@@ -605,7 +612,7 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>ITEMS</Text>
             <View style={styles.table}>
-              <View style={styles.tableHeader}>
+              <View style={styles.tableHeader} fixed>
                 <Text style={[styles.tableHeaderCell, styles.colName]}>
                   Item
                 </Text>
@@ -623,6 +630,7 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
               {quotation.items.map((item, index) => (
                 <View
                   key={index}
+                  wrap={false}
                   style={[
                     styles.tableRow,
                     ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
@@ -649,7 +657,7 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
           </View>
 
           {/* Totals */}
-          <View style={styles.totalsSection}>
+          <View style={styles.totalsSection} wrap={false}>
             <View style={styles.totalRow}>
               <Text>Subtotal:</Text>
               <Text style={{ fontWeight: "bold" }}>
@@ -717,10 +725,16 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
               {quotation.bottomNote ?? DEFAULT_BOTTOM_NOTE}
             </Text>
           </View>
+
+          {/* Stamp - flows as the last block, so it lands once at the
+              very end of the document (last page only) */}
+          <View style={styles.stampContainer} wrap={false}>
+            <Image src={stampImage} style={styles.stampImage} />
+          </View>
         </View>
 
-        {/* Modern Footer with Curve */}
-        <View style={styles.footerContainer}>
+        {/* Modern Footer with Curve - repeats on every page */}
+        <View style={styles.footerContainer} fixed>
           <View style={styles.footerBackground}>
             <FooterCurve />
           </View>
@@ -753,11 +767,6 @@ export function QuotationPDF({ quotation }: { quotation: BulkQuotation }) {
             </View>
           </View>
         </View>
-
-        {/* Stamp image at bottom right */}
-        <View style={styles.stampContainer} fixed>
-          <Image src={stampImage} style={styles.stampImage} />
-        </View>
       </Page>
     </Document>
   );
@@ -776,8 +785,8 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
           <Text style={styles.watermarkText}>PENHOUSE</Text>
         </View>
 
-        {/* Modern Header with Curve */}
-        <View style={styles.headerContainer}>
+        {/* Modern Header with Curve - repeats on every page */}
+        <View style={styles.headerContainer} fixed>
           <View style={styles.headerBackground}>
             <HeaderCurve />
           </View>
@@ -882,7 +891,7 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>ITEMS</Text>
             <View style={styles.table}>
-              <View style={styles.tableHeader}>
+              <View style={styles.tableHeader} fixed>
                 <Text style={[styles.tableHeaderCell, styles.colName]}>
                   Item
                 </Text>
@@ -900,6 +909,7 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
               {invoice.items.map((item, index) => (
                 <View
                   key={index}
+                  wrap={false}
                   style={[
                     styles.tableRow,
                     ...(index % 2 === 1 ? [styles.tableRowAlt] : []),
@@ -926,7 +936,7 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
           </View>
 
           {/* Totals */}
-          <View style={styles.totalsSection}>
+          <View style={styles.totalsSection} wrap={false}>
             <View style={styles.totalRow}>
               <Text>Subtotal:</Text>
               <Text style={{ fontWeight: "bold" }}>
@@ -1070,10 +1080,16 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
               {invoice.bottomNote ?? quotation?.bottomNote ?? DEFAULT_BOTTOM_NOTE}
             </Text>
           </View>
+
+          {/* Stamp - flows as the last block, so it lands once at the
+              very end of the document (last page only) */}
+          <View style={styles.stampContainer} wrap={false}>
+            <Image src={stampImage} style={styles.stampImage} />
+          </View>
         </View>
 
-        {/* Modern Footer with Curve */}
-        <View style={styles.footerContainer}>
+        {/* Modern Footer with Curve - repeats on every page */}
+        <View style={styles.footerContainer} fixed>
           <View style={styles.footerBackground}>
             <FooterCurve />
           </View>
@@ -1104,11 +1120,6 @@ export function InvoicePDF({ invoice }: { invoice: BulkInvoice }) {
               </View>
             </View>
           </View>
-        </View>
-
-        {/* Stamp image at bottom right */}
-        <View style={styles.stampContainer} fixed>
-          <Image src={stampImage} style={styles.stampImage} />
         </View>
       </Page>
     </Document>

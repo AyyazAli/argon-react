@@ -11,6 +11,9 @@ import {
   useBookManual,
   useCreateTraxReceivingSheet,
   useGeneratePrintfileFromCSV,
+  useTraxCities,
+  useLeopardCities,
+  useUpdateOrderCity,
 } from '@/hooks'
 import { useOrderStore, useAuthStore } from '@/stores'
 import { formatDate, cn } from '@/lib/utils'
@@ -48,7 +51,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { OrderDetailsModal } from './OrderDetailsModal'
-import type { Order, OrderStatus, CourierCompany } from '@/types'
+import { CityCombobox } from './CityCombobox'
+import type { Order, OrderStatus, CourierCompany, City } from '@/types'
 import {
   RefreshCw,
   Search,
@@ -100,7 +104,8 @@ export function OrdersPage() {
   const bookManual = useBookManual()
   const createReceivingSheet = useCreateTraxReceivingSheet()
   const generateFromCSV = useGeneratePrintfileFromCSV()
-  const { selectedOrders, toggleOrderSelection, clearSelection, setSelectedOrders } = useOrderStore()
+  const updateOrderCity = useUpdateOrderCity()
+  const { selectedOrders, toggleOrderSelection, clearSelection, setSelectedOrders, traxCities, leopardCities } = useOrderStore()
   const business = useAuthStore((s) => s.business)
   const csvInputRef = useRef<HTMLInputElement>(null)
 
@@ -119,6 +124,19 @@ export function OrdersPage() {
     open: false,
     trackingIds: [],
   })
+
+  // City mapping (Trax & Leopard require a courier city id per order before booking)
+  const needsCityMapping = selectedCompany === 'trax' || selectedCompany === 'leopard'
+  const traxCitiesQuery = useTraxCities(bookingDialogOpen && selectedCompany === 'trax')
+  const leopardCitiesQuery = useLeopardCities(bookingDialogOpen && selectedCompany === 'leopard')
+  const activeCities = (selectedCompany === 'leopard' ? leopardCities : traxCities) ?? []
+  const citiesLoading =
+    selectedCompany === 'leopard' ? leopardCitiesQuery.isLoading : traxCitiesQuery.isLoading
+
+  const handleSelectCity = (orderId: string, city: City) => {
+    if (!needsCityMapping) return
+    updateOrderCity.mutate({ orderId, city, company: selectedCompany })
+  }
 
   const filteredOrders = useMemo(() => {
     if (!orders) return []
@@ -550,16 +568,48 @@ export function OrdersPage() {
                   </div>
                 )}
 
+                {/* City mapping hint */}
+                {needsCityMapping && (
+                  <p className="mt-3 mb-1 text-xs text-muted-foreground">
+                    Select the {selectedCompany} city for each order before booking.
+                  </p>
+                )}
+
                 {/* Order list */}
                 {selectedOrders.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto text-sm space-y-1">
-                    {selectedOrders.map((order, i) => (
-                      <div key={order._id} className="flex gap-2">
-                        <span className="text-muted-foreground">{i + 1}.</span>
-                        <span>{order.billing.first_name} {order.billing.last_name}</span>
-                        <span className="text-muted-foreground">— {order.billing.city}</span>
-                      </div>
-                    ))}
+                  <div className="mt-2 max-h-64 overflow-y-auto text-sm space-y-1">
+                    {selectedOrders.map((selected, i) => {
+                      // Use the live order from the store so the ✓ updates after mapping
+                      const order = orders?.find((o) => o._id === selected._id) ?? selected
+                      const ccd = order.billing.cityCompanydetails
+                      const mapped = !!ccd && ccd.company === selectedCompany
+                      const mappedLabel = mapped
+                        ? activeCities.find((c) => c.id === String(ccd!.cityId))?.name ||
+                          order.billing.city
+                        : undefined
+                      return (
+                        <div
+                          key={order._id}
+                          className="flex items-center gap-2 border-b py-1.5 last:border-b-0"
+                        >
+                          <span className="text-muted-foreground">{i + 1}.</span>
+                          <span className="flex-1 truncate">
+                            {order.billing.first_name} {order.billing.last_name}
+                            <span className="text-muted-foreground"> — {order.billing.city}</span>
+                          </span>
+                          {needsCityMapping && (
+                            <CityCombobox
+                              cities={activeCities}
+                              mapped={mapped}
+                              mappedLabel={mappedLabel}
+                              loading={citiesLoading}
+                              disabled={updateOrderCity.isPending}
+                              onSelect={(city) => handleSelectCity(order._id, city)}
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>

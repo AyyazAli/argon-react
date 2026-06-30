@@ -221,30 +221,34 @@ export function useBookOrders() {
   })
 }
 
-export function useTraxCities() {
+export function useTraxCities(enabled = true) {
   const { setTraxCities } = useOrderStore()
 
   return useQuery({
     queryKey: ['traxCities'],
     queryFn: async () => {
       const response = await ordersApi.getTraxCities()
-      setTraxCities(response.data)
-      return response.data
+      const cities = response.data ?? []
+      setTraxCities(cities)
+      return cities
     },
+    enabled,
     staleTime: 1000 * 60 * 30, // 30 minutes
   })
 }
 
-export function useLeopardCities() {
+export function useLeopardCities(enabled = true) {
   const { setLeopardCities } = useOrderStore()
 
   return useQuery({
     queryKey: ['leopardCities'],
     queryFn: async () => {
       const response = await ordersApi.getLeopardCities()
-      setLeopardCities(response.data)
-      return response.data
+      const cities = response.data ?? []
+      setLeopardCities(cities)
+      return cities
     },
+    enabled,
     staleTime: 1000 * 60 * 30,
   })
 }
