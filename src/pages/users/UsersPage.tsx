@@ -43,6 +43,7 @@ import {
 import type { User, UserInput, UserUpdateInput } from '@/services/users'
 import { Plus, Search, Pencil, Trash2, Users, X } from 'lucide-react'
 import { useAuthStore } from '@/stores'
+import { ASSIGNABLE_ROLES } from '@/lib/roles'
 
 const businesses = [
   { value: 'penhouse', label: 'Pen House' },
@@ -50,13 +51,9 @@ const businesses = [
   { value: 'customhouse', label: 'Custom House' },
 ]
 
-const roles = [
-  { value: 'user', label: 'User' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'superAdmin', label: 'Super Admin' },
-  { value: 'bulkOrder', label: 'Bulk Order' },
-  { value: 'operationManager', label: 'Operation Manager' },
-]
+// Roles that can be assigned to a user (shared source of truth — includes
+// Finance Manager, which was previously missing here so it could never be assigned).
+const roles = ASSIGNABLE_ROLES
 
 const emptyUser: UserInput = {
   email: '',

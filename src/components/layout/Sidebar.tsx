@@ -28,18 +28,19 @@ import {
   BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { ACCESS } from '@/lib/roles'
 
 interface NavEntry {
   path: string
   title: string
   icon: React.ReactNode
-  roles?: string[]
+  roles?: readonly string[]
 }
 
 interface NavGroup {
   title: string
   icon: React.ReactNode
-  roles?: string[]
+  roles?: readonly string[]
   children: NavEntry[]
 }
 
@@ -62,119 +63,143 @@ const navGroups: NavGroup[] = [
         path: '/orders',
         title: 'Orders',
         icon: <ShoppingCart className="size-5" />,
-        roles: ['superAdmin', 'admin', 'opertaionManager'],
+        roles: ACCESS.orders,
       },
     ],
   },
   {
     title: 'Accounts',
     icon: <Wallet className="size-5" />,
-    roles: ['admin', 'superAdmin', 'financeManager'],
+    roles: ACCESS.accounts,
     children: [
       {
         path: '/accounts',
         title: 'Accounts',
         icon: <Wallet className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
       {
         path: '/categories',
         title: 'Categories',
         icon: <FolderTree className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
       {
         path: '/transactions',
         title: 'Transactions',
         icon: <Receipt className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
       {
         path: '/vendors',
         title: 'Vendors',
         icon: <Building2 className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
       {
         path: '/liability',
         title: 'Liability',
         icon: <Scale className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
       {
         path: '/accounts-reports',
         title: 'Reports',
         icon: <BarChart3 className="size-5" />,
-        roles: ['admin', 'superAdmin', 'financeManager'],
+        roles: ACCESS.accounts,
       },
     ],
   },
   {
     title: 'Inventory',
     icon: <Package className="size-5" />,
-    roles: ['admin', 'superAdmin'],
+    roles: ACCESS.inventory,
     children: [
       {
         path: '/inventory',
-        title: 'Inventory',
-        icon: <Package className="size-5" />,
-        roles: ['admin', 'superAdmin'],
+        title: 'Dashboard',
+        icon: <LayoutDashboard className="size-5" />,
+        roles: ACCESS.inventory,
       },
       {
-        path: '/vendor-inventory',
-        title: 'Vendor Inventory',
+        path: '/inventory/products',
+        title: 'Products',
+        icon: <Package className="size-5" />,
+        roles: ACCESS.inventory,
+      },
+      {
+        path: '/inventory/movements',
+        title: 'Stock Movements',
+        icon: <Receipt className="size-5" />,
+        roles: ACCESS.inventory,
+      },
+      {
+        path: '/inventory/categories',
+        title: 'Categories',
+        icon: <FolderTree className="size-5" />,
+        roles: ACCESS.inventory,
+      },
+      {
+        path: '/inventory/warehouses',
+        title: 'Warehouses',
         icon: <Boxes className="size-5" />,
-        roles: ['admin', 'superAdmin'],
+        roles: ACCESS.inventory,
       },
     ],
   },
   {
     title: 'Bulk Orders',
     icon: <Boxes className="size-5" />,
-    roles: ['superAdmin', 'admin', 'bulkOrder'],
+    roles: ACCESS.bulkOrders,
     children: [
       {
         path: '/bulk-customers',
         title: 'Bulk Customers',
         icon: <Building2 className="size-5" />,
-        roles: ['superAdmin', 'admin', 'bulkOrder'],
+        roles: ACCESS.bulkOrders,
       },
       {
         path: '/quotations',
         title: 'Quotations',
         icon: <FileText className="size-5" />,
-        roles: ['superAdmin', 'admin', 'bulkOrder'],
+        roles: ACCESS.bulkOrders,
       },
       {
         path: '/invoices',
         title: 'Invoices',
         icon: <FileCheck className="size-5" />,
-        roles: ['superAdmin', 'admin', 'bulkOrder'],
+        roles: ACCESS.bulkOrders,
       },
       {
         path: '/bank-accounts',
         title: 'Bank Accounts',
         icon: <Building2 className="size-5" />,
-        roles: ['superAdmin', 'admin'],
+        roles: ACCESS.bulkBankAccounts,
       },
       {
         path: '/bulk-reports',
         title: 'Reports',
         icon: <BarChart3 className="size-5" />,
-        roles: ['superAdmin', 'admin'],
+        roles: ACCESS.bulkReports,
       },
     ],
   },
   {
     title: 'Administration',
     icon: <Users className="size-5" />,
-    roles: ['superAdmin'],
+    roles: ACCESS.users,
     children: [
       {
         path: '/users',
         title: 'Users',
         icon: <Users className="size-5" />,
-        roles: ['superAdmin'],
+        roles: ACCESS.users,
+      },
+      {
+        path: '/order-reports',
+        title: 'Order Reports',
+        icon: <BarChart3 className="size-5" />,
+        roles: ACCESS.orderReports,
       },
     ],
   },
@@ -186,7 +211,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const businessLogo = business ? BUSINESS_LOGOS[business.toLowerCase()] : undefined
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  const hasAccess = (allowedRoles?: string[]) => {
+  const hasAccess = (allowedRoles?: readonly string[]) => {
     if (!allowedRoles || allowedRoles.length === 0) return true
     return hasRole(...allowedRoles)
   }

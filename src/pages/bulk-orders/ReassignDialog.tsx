@@ -33,7 +33,10 @@ export function ReassignDialog({
   title,
   description,
 }: ReassignDialogProps) {
-  const { data: users, isLoading } = useUsers()
+  // Only fetch the user list while the dialog is open. Avoids hitting the
+  // superAdmin-only /api/user endpoint on every page load for non-superAdmins
+  // (e.g. Bulk Order users, who can't reassign and would otherwise get a 403).
+  const { data: users, isLoading } = useUsers(open)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)

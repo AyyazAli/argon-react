@@ -1,6 +1,7 @@
 import { createHashRouter, Navigate } from "react-router-dom";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { ACCESS } from "@/lib/roles";
 
 // Layouts
 import { AdminLayout } from "@/components/layout/AdminLayout";
@@ -16,8 +17,14 @@ import { CategoriesPage } from "@/pages/accounts/CategoriesPage";
 import { VendorsPage } from "@/pages/accounts/VendorsPage";
 import { LiabilityPage } from "@/pages/accounts/LiabilityPage";
 import { AccountsReportsPage } from "@/pages/accounts/AccountsReportsPage";
-import { InventoryPage } from "@/pages/inventory/InventoryPage";
-import { VendorInventoryPage } from "@/pages/inventory/VendorInventoryPage";
+import {
+  InventoryDashboardPage,
+  ProductsPage,
+  ProductDetailPage,
+  StockMovementsPage,
+  InventoryCategoriesPage,
+  WarehousesPage,
+} from "@/pages/inventory";
 import {
   BulkCustomersPage,
   QuotationsPage,
@@ -26,6 +33,7 @@ import {
 } from "@/pages/bulk-orders";
 import { BankAccountsPage } from "@/pages/bulk-orders/BankAccountsPage";
 import { UsersPage } from "@/pages/users";
+import { OrderReportsPage } from "@/pages/orders-reports";
 
 export const router = createHashRouter([
   {
@@ -47,7 +55,7 @@ export const router = createHashRouter([
       {
         path: "orders",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin", "opertaionManager"]}>
+          <RoleGuard allowedRoles={ACCESS.orders}>
             <OrdersPage />
           </RoleGuard>
         ),
@@ -55,7 +63,7 @@ export const router = createHashRouter([
       {
         path: "bulk-customers",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin", "bulkOrder"]}>
+          <RoleGuard allowedRoles={ACCESS.bulkOrders}>
             <BulkCustomersPage />
           </RoleGuard>
         ),
@@ -63,7 +71,7 @@ export const router = createHashRouter([
       {
         path: "quotations",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin", "bulkOrder"]}>
+          <RoleGuard allowedRoles={ACCESS.bulkOrders}>
             <QuotationsPage />
           </RoleGuard>
         ),
@@ -71,7 +79,7 @@ export const router = createHashRouter([
       {
         path: "bank-accounts",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin"]}>
+          <RoleGuard allowedRoles={ACCESS.bulkBankAccounts}>
             <BankAccountsPage />
           </RoleGuard>
         ),
@@ -79,7 +87,7 @@ export const router = createHashRouter([
       {
         path: "invoices",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin", "bulkOrder"]}>
+          <RoleGuard allowedRoles={ACCESS.bulkOrders}>
             <InvoicesPage />
           </RoleGuard>
         ),
@@ -87,7 +95,7 @@ export const router = createHashRouter([
       {
         path: "bulk-reports",
         element: (
-          <RoleGuard allowedRoles={["superAdmin", "admin"]}>
+          <RoleGuard allowedRoles={ACCESS.bulkReports}>
             <ReportsPage />
           </RoleGuard>
         ),
@@ -95,7 +103,7 @@ export const router = createHashRouter([
       {
         path: "transactions",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <TransactionsPage />
           </RoleGuard>
         ),
@@ -103,7 +111,7 @@ export const router = createHashRouter([
       {
         path: "transactions/:transactionId",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <TransactionsPage />
           </RoleGuard>
         ),
@@ -111,7 +119,7 @@ export const router = createHashRouter([
       {
         path: "accounts",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <AccountsPage />
           </RoleGuard>
         ),
@@ -119,7 +127,7 @@ export const router = createHashRouter([
       {
         path: "categories",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <CategoriesPage />
           </RoleGuard>
         ),
@@ -127,7 +135,7 @@ export const router = createHashRouter([
       {
         path: "vendors",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <VendorsPage />
           </RoleGuard>
         ),
@@ -135,7 +143,7 @@ export const router = createHashRouter([
       {
         path: "liability",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <LiabilityPage />
           </RoleGuard>
         ),
@@ -143,7 +151,7 @@ export const router = createHashRouter([
       {
         path: "accounts-reports",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin", "financeManager"]}>
+          <RoleGuard allowedRoles={ACCESS.accounts}>
             <AccountsReportsPage />
           </RoleGuard>
         ),
@@ -151,24 +159,64 @@ export const router = createHashRouter([
       {
         path: "inventory",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
-            <InventoryPage />
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <InventoryDashboardPage />
           </RoleGuard>
         ),
       },
       {
-        path: "vendor-inventory",
+        path: "inventory/products",
         element: (
-          <RoleGuard allowedRoles={["admin", "superAdmin"]}>
-            <VendorInventoryPage />
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <ProductsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "inventory/products/:productId",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <ProductDetailPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "inventory/movements",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <StockMovementsPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "inventory/categories",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <InventoryCategoriesPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "inventory/warehouses",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <WarehousesPage />
           </RoleGuard>
         ),
       },
       {
         path: "users",
         element: (
-          <RoleGuard allowedRoles={["superAdmin"]}>
+          <RoleGuard allowedRoles={ACCESS.users}>
             <UsersPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "order-reports",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.orderReports}>
+            <OrderReportsPage />
           </RoleGuard>
         ),
       },

@@ -106,6 +106,8 @@ export function InvoicesPage() {
   const [statusNotes, setStatusNotes] = useState('')
 
   const isAdmin = hasRole('admin', 'superAdmin')
+  // Reassigning needs the user list (GET /api/user), which is superAdmin-only.
+  const isSuperAdmin = hasRole('superAdmin')
 
   // Handle quotation param from URL (when clicking "Create Invoice" from Quotations page)
   useEffect(() => {
@@ -457,21 +459,21 @@ export function InvoicesPage() {
                                 <Download className="size-4 mr-2" />
                                 Download PDF
                               </DropdownMenuItem>
+                              {isAdmin && <DropdownMenuSeparator />}
+                              {isSuperAdmin && (
+                                <DropdownMenuItem onClick={() => handleReassignClick(invoice)}>
+                                  <UserCheck className="size-4 mr-2" />
+                                  Reassign
+                                </DropdownMenuItem>
+                              )}
                               {isAdmin && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleReassignClick(invoice)}>
-                                    <UserCheck className="size-4 mr-2" />
-                                    Reassign
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteClick(invoice)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="size-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(invoice)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="size-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>

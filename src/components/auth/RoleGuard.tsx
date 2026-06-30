@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores'
 
 interface RoleGuardProps {
   children: React.ReactNode
-  allowedRoles: string[]
+  allowedRoles: readonly string[]
 }
 
 export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {

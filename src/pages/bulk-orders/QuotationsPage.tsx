@@ -99,6 +99,8 @@ export function QuotationsPage() {
   const deleteQuotation = useDeleteQuotation()
 
   const isAdmin = hasRole('admin', 'superAdmin')
+  // Reassigning needs the user list (GET /api/user), which is superAdmin-only.
+  const isSuperAdmin = hasRole('superAdmin')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -426,7 +428,7 @@ export function QuotationsPage() {
                                   Create Invoice
                                 </DropdownMenuItem>
                               )}
-                              {isAdmin && (
+                              {isSuperAdmin && (
                                 <DropdownMenuItem onClick={() => handleReassignClick(quotation)}>
                                   <UserCheck className="size-4 mr-2" />
                                   Reassign

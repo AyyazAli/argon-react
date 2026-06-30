@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usersApi, type UserInput, type UserUpdateInput } from '@/services'
 import { toast } from 'sonner'
 
-export function useUsers() {
+export function useUsers(enabled = true) {
   return useQuery({
     queryKey: ['users'],
     queryFn: async () => {
@@ -16,6 +16,7 @@ export function useUsers() {
         throw error
       }
     },
+    enabled,
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
   })

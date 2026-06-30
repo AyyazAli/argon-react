@@ -1,6 +1,6 @@
-export { InventoryPage } from './InventoryPage'
-export { VendorInventoryPage } from './VendorInventoryPage'
-
-
-
-
+export { InventoryDashboardPage } from './InventoryDashboardPage'
+export { ProductsPage } from './ProductsPage'
+export { ProductDetailPage } from './ProductDetailPage'
+export { StockMovementsPage } from './StockMovementsPage'
+export { InventoryCategoriesPage } from './InventoryCategoriesPage'
+export { WarehousesPage } from './WarehousesPage'
