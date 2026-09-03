@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { pdf } from '@react-pdf/renderer'
 import { saveAs } from 'file-saver'
 import { ManualBookingLabels } from '@/components/pdf/ManualBookingLabels'
@@ -60,6 +61,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Upload,
+  AlertTriangle,
 } from 'lucide-react'
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -466,6 +468,16 @@ export function OrdersPage() {
 
                               </SelectContent>
                             </Select>
+                            {(order.inventory?.status === 'partial' || order.inventory?.status === 'unmatched') && (
+                              <Link
+                                to="/inventory/order-issues"
+                                className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-200"
+                                title={order.inventory.issues?.map((i) => i.message).join('\n')}
+                              >
+                                <AlertTriangle className="size-3" />
+                                Stock issue{(order.inventory.issues?.length ?? 0) > 1 ? 's' : ''}
+                              </Link>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground whitespace-normal break-words max-w-[150px]">
                             {order.remarks || ''}

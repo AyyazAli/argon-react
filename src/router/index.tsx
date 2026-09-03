@@ -25,6 +25,7 @@ import {
   InventoryCategoriesPage,
   WarehousesPage,
   ScanPage,
+  OrderStockIssuesPage,
 } from "@/pages/inventory";
 import {
   BulkCustomersPage,
@@ -170,6 +171,14 @@ export const router = createHashRouter([
         element: (
           <RoleGuard allowedRoles={ACCESS.inventory}>
             <ScanPage />
+          </RoleGuard>
+        ),
+      },
+      {
+        path: "inventory/order-issues",
+        element: (
+          <RoleGuard allowedRoles={ACCESS.inventory}>
+            <OrderStockIssuesPage />
           </RoleGuard>
         ),
       },

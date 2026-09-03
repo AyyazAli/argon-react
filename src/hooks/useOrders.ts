@@ -5,6 +5,31 @@ import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
 import type { Order, CourierCompany } from '@/types'
 
+/**
+ * Surface inventory-sync results at the moment of dispatch: a warning when
+ * any order had unmatched SKUs or a stock shortfall, a quiet success otherwise.
+ */
+type InventoryLike = { status?: string; issues?: Array<unknown> } | null | undefined
+function inventoryOf(orders: unknown): InventoryLike[] {
+  if (!Array.isArray(orders)) return []
+  return orders.map((o) => (o && typeof o === 'object' ? (o as { inventory?: InventoryLike }).inventory : null))
+}
+function notifyInventory(items: InventoryLike[]) {
+  const seen = items.filter((i): i is NonNullable<InventoryLike> => !!i && i.status !== 'none')
+  if (seen.length === 0) return
+  const withIssues = seen.filter((i) => (i.issues?.length ?? 0) > 0).length
+  if (withIssues > 0) {
+    toast.warning(
+      `Stock deducted, but ${withIssues} order(s) have unmatched SKUs or shortfalls — see Inventory → Order Stock Issues`,
+      { duration: 8000 }
+    )
+  } else if (seen.some((i) => i.status === 'deducted')) {
+    toast.success('Inventory deducted for dispatched order(s)')
+  } else if (seen.some((i) => i.status === 'restored')) {
+    toast.success('Inventory restored')
+  }
+}
+
 export function useTraxTracking(trackingId: string, enabled: boolean) {
   return useQuery({
     queryKey: ['tracking', 'trax', trackingId],
@@ -39,6 +64,7 @@ export function useBookManual() {
       clearSelection()
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       toast.success('Orders manually booked successfully')
+      notifyInventory(inventoryOf(data.data))
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to book orders manually')
@@ -158,8 +184,9 @@ export function useUpdateOrderStatus() {
       setOrders(updated)
       return { previousOrders: orders }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       toast.success(`Status updated to ${variables.status}`)
+      notifyInventory(data.inventory ? [data.inventory] : [])
       queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
     onError: (error: Error, _variables, context) => {
@@ -214,6 +241,7 @@ export function useBookOrders() {
       clearSelection()
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       toast.success(`Orders booked successfully via ${variables.company}`)
+      notifyInventory(inventoryOf(orders))
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to book orders')

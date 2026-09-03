@@ -76,6 +76,7 @@ export type MovementType =
   | 'adjustment'
   | 'opening'
   | 'sale'
+  | 'return'
   | 'write_off'
   | 'internal'
   | 'transfer_in'
@@ -95,6 +96,7 @@ export type ReasonCode =
   | 'count'
   | 'manual'
   | 'transfer'
+  | 'order_return'
 
 export type ScanMode = 'receive' | 'deduct' | 'count' | 'transfer'
 
@@ -180,6 +182,18 @@ export interface BatchResult {
   skipped: number
   skippedLines: BatchLineError[]
   results: BatchLineResult[]
+}
+
+// ---- Order stock issues ----
+
+export interface OrderStockIssue {
+  _id: string
+  orderId?: string | number
+  cn?: number
+  status: string
+  customer: string
+  dateCreated?: string
+  inventory: import('./order').OrderInventory
 }
 
 // ---- Labels ----

@@ -50,6 +50,37 @@ export interface OrderLog {
   description?: string
 }
 
+export type OrderInventoryStatus = 'none' | 'deducted' | 'partial' | 'unmatched' | 'restored'
+
+export interface OrderInventoryIssue {
+  lineIndex: number
+  name: string
+  sku: string
+  qty: number
+  remaining: number
+  code: 'no_sku' | 'unmatched' | 'short'
+  message: string
+}
+
+/** Inventory sync state written when an order is dispatched / returned. */
+export interface OrderInventory {
+  status: OrderInventoryStatus
+  deducted?: Array<{ lineIndex: number; name: string; sku: string; qty: number; productId?: string; variantId?: string }>
+  issues?: OrderInventoryIssue[]
+  sessionId?: string
+  deductedAt?: string
+  restoredAt?: string
+  restoreSessionId?: string
+}
+
+/** Compact summary returned by the status-update endpoint. */
+export interface OrderInventorySummary {
+  status: OrderInventoryStatus
+  deductedLines: number
+  issues: Array<{ sku: string; name: string; remaining: number; code: string; message: string }>
+  sessionId?: string
+}
+
 export interface Order {
   _id: string
   orderId: string
@@ -68,6 +99,7 @@ export interface Order {
   lastUpdatedBy?: string
   dispatchDetails?: DispatchDetail[]
   orderLog?: OrderLog[]
+  inventory?: OrderInventory
 }
 
 export type OrderStatus =

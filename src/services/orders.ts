@@ -23,8 +23,8 @@ export const ordersApi = {
   updateStatus: async (
     orderId: string,
     status: string
-  ): Promise<{ message: string; updated: boolean }> => {
-    const response = await api.put<{ message: string; updated: boolean }>(
+  ): Promise<{ message: string; updated: boolean; inventory?: import('@/types').OrderInventorySummary | null }> => {
+    const response = await api.put<{ message: string; updated: boolean; inventory?: import('@/types').OrderInventorySummary | null }>(
       `/api/argon/orders/status/${orderId}`,
       { status, id: orderId }
     )

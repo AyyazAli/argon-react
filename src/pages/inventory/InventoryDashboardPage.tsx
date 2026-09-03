@@ -31,6 +31,7 @@ import {
   useLowStock,
   useValuation,
   useRecentMovements,
+  useOrderStockIssues,
 } from '@/hooks'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { MOVEMENT_LABELS, movementBadgeVariant } from '@/components/inventory'
@@ -67,6 +68,7 @@ export function InventoryDashboardPage() {
   const { data: lowStock } = useLowStock()
   const { data: valuation } = useValuation()
   const { data: recent } = useRecentMovements(8)
+  const { data: orderIssues } = useOrderStockIssues()
 
   if (isLoading) {
     return (
@@ -114,6 +116,21 @@ export function InventoryDashboardPage() {
           </span>
         </Button>
       </div>
+
+      {(orderIssues?.length ?? 0) > 0 && (
+        <Card className="border-amber-300 bg-amber-50/60">
+          <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <AlertTriangle className="mr-1 inline size-4 text-amber-600" />
+              <span className="font-medium">{orderIssues!.length} dispatched order(s)</span> could not be fully
+              deducted from stock (unmatched SKUs or shortfalls).
+            </p>
+            <Button variant="outline" size="sm" onClick={() => navigate('/inventory/order-issues')}>
+              Review
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

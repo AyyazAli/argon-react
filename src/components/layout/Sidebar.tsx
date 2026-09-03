@@ -27,6 +27,7 @@ import {
   ChevronUp,
   BarChart3,
   ScanLine,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { ACCESS } from '@/lib/roles'
@@ -132,6 +133,12 @@ const navGroups: NavGroup[] = [
         path: '/inventory/products',
         title: 'Products',
         icon: <Package className="size-5" />,
+        roles: ACCESS.inventory,
+      },
+      {
+        path: '/inventory/order-issues',
+        title: 'Order Stock Issues',
+        icon: <AlertTriangle className="size-5" />,
         roles: ACCESS.inventory,
       },
       {

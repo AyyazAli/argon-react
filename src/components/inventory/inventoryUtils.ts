@@ -37,6 +37,7 @@ export const MOVEMENT_LABELS: Record<MovementType, string> = {
   adjustment: 'Adjustment',
   opening: 'Opening',
   sale: 'Sale',
+  return: 'Return',
   write_off: 'Write-off',
   internal: 'Internal use',
   transfer_in: 'Transfer In',
@@ -51,6 +52,7 @@ export function movementBadgeVariant(
     case 'receipt':
     case 'opening':
     case 'transfer_in':
+    case 'return':
       return 'success'
     case 'adjustment':
     case 'correction':
@@ -77,6 +79,7 @@ export const REASON_LABELS: Record<ReasonCode, string> = {
   count: 'Stock count',
   manual: 'Manual adjustment',
   transfer: 'Transfer between warehouses',
+  order_return: 'Order returned / cancelled',
 }
 
 /** Reasons offered per scan mode (deduct requires one). */

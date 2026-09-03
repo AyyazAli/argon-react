@@ -272,6 +272,30 @@ export function useMovements(query: MovementQuery = {}) {
   })
 }
 
+// ---- Order stock issues ----
+export function useOrderStockIssues() {
+  return useQuery({
+    queryKey: ['inventory', 'order-issues'],
+    queryFn: async () => (await inventoryApi.getOrderIssues()).data,
+  })
+}
+
+export function useRetryOrderDeduction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderId: string) => inventoryApi.retryOrderDeduction(orderId),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ROOT })
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      const remaining = res.data.inventory?.issues.length ?? 0
+      if (!res.data.changed) toast.info(res.message)
+      else if (remaining === 0) toast.success('All lines deducted')
+      else toast.warning(`${remaining} line(s) still need attention`)
+    },
+    onError: (e) => toast.error(errMsg(e, 'Retry failed')),
+  })
+}
+
 // ---- Reports ----
 export function useInventorySummary() {
   return useQuery({

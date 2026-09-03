@@ -16,6 +16,8 @@ import type {
   LookupResult,
   BatchInput,
   BatchResult,
+  OrderStockIssue,
+  OrderInventorySummary,
 } from '@/types'
 
 const BASE = '/api/argon/inventory'
@@ -139,6 +141,19 @@ export const inventoryApi = {
     const response = await api.get<PaginatedResponse<StockMovement[]>>(`${BASE}/movements`, {
       params: query,
     })
+    return response.data
+  },
+
+  // ---- Order-driven deductions needing review ----
+  getOrderIssues: async (): Promise<ApiResponse<OrderStockIssue[]>> => {
+    const response = await api.get<ApiResponse<OrderStockIssue[]>>(`${BASE}/orders/issues`)
+    return response.data
+  },
+
+  retryOrderDeduction: async (
+    orderId: string
+  ): Promise<ApiResponse<{ changed: boolean; inventory: OrderInventorySummary | null }>> => {
+    const response = await api.post(`${BASE}/orders/${orderId}/retry`)
     return response.data
   },
 
