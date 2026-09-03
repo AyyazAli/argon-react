@@ -8,13 +8,14 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts'
-import { Package, Boxes, DollarSign, AlertTriangle } from 'lucide-react'
+import { Package, Boxes, DollarSign, AlertTriangle, PackagePlus, PackageMinus, ListChecks, Tag } from 'lucide-react'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Badge,
+  Button,
   Spinner,
 } from '@/components/ui'
 import {
@@ -80,6 +81,38 @@ export function InventoryDashboardPage() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Inventory Dashboard</h2>
         <p className="text-muted-foreground">Stock levels, valuation, and recent activity</p>
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Button size="lg" className="h-auto justify-start gap-3 py-4" onClick={() => navigate('/inventory/scan?mode=receive')}>
+          <PackagePlus className="size-6" />
+          <span className="text-left">
+            <span className="block font-semibold">Receive stock</span>
+            <span className="block text-xs font-normal opacity-80">Scan incoming items</span>
+          </span>
+        </Button>
+        <Button size="lg" variant="outline" className="h-auto justify-start gap-3 py-4" onClick={() => navigate('/inventory/scan?mode=deduct')}>
+          <PackageMinus className="size-6" />
+          <span className="text-left">
+            <span className="block font-semibold">Deduct stock</span>
+            <span className="block text-xs font-normal opacity-80">Sold, damaged, used for orders</span>
+          </span>
+        </Button>
+        <Button size="lg" variant="outline" className="h-auto justify-start gap-3 py-4" onClick={() => navigate('/inventory/scan?mode=count')}>
+          <ListChecks className="size-6" />
+          <span className="text-left">
+            <span className="block font-semibold">Stock count</span>
+            <span className="block text-xs font-normal opacity-80">Scan the shelf, post variances</span>
+          </span>
+        </Button>
+        <Button size="lg" variant="outline" className="h-auto justify-start gap-3 py-4" onClick={() => navigate('/inventory/products?labels=1')}>
+          <Tag className="size-6" />
+          <span className="text-left">
+            <span className="block font-semibold">Print labels</span>
+            <span className="block text-xs font-normal opacity-80">QR + barcode sheets</span>
+          </span>
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

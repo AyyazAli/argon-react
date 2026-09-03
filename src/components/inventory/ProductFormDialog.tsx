@@ -26,11 +26,15 @@ import {
 import { useCreateProduct, useUpdateProduct, useProductCategories } from '@/hooks'
 import { useVendors } from '@/hooks/useAccounting'
 import type { InventoryProduct, ProductInput } from '@/types'
-import { parseAttributes, stringifyAttributes, toNumber } from './inventoryUtils'
+import { parseAttributes, stringifyAttributes, toNumber, SKU_PATTERN, SKU_HINT } from './inventoryUtils'
 
 const variantSchema = z.object({
   _id: z.string().optional(),
-  sku: z.string().min(1, 'SKU is required'),
+  sku: z
+    .string()
+    .trim()
+    .min(1, 'SKU is required')
+    .regex(SKU_PATTERN, `Invalid SKU — ${SKU_HINT}`),
   barcode: z.string().optional(),
   attributes: z.string().optional(),
   costPrice: z.string().optional(),
@@ -56,6 +60,8 @@ interface ProductFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product?: InventoryProduct | null
+  /** Called with the saved product after a successful create (e.g. to offer labels). */
+  onCreated?: (product: InventoryProduct) => void
 }
 
 /**
@@ -93,7 +99,7 @@ function toDefaults(product?: InventoryProduct | null): FormValues {
   }
 }
 
-export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDialogProps) {
+export function ProductFormDialog({ open, onOpenChange, product, onCreated }: ProductFormDialogProps) {
   const isEdit = !!product
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
@@ -133,11 +139,15 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
       })),
     }
 
-    const onDone = { onSuccess: () => onOpenChange(false) }
     if (isEdit && product) {
-      updateProduct.mutate({ id: product._id, data: payload }, onDone)
+      updateProduct.mutate({ id: product._id, data: payload }, { onSuccess: () => onOpenChange(false) })
     } else {
-      createProduct.mutate(payload, onDone)
+      createProduct.mutate(payload, {
+        onSuccess: (res) => {
+          onOpenChange(false)
+          onCreated?.(res.data)
+        },
+      })
     }
   }
 
@@ -257,6 +267,13 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
                     <Input
                       {...register(`variants.${index}.attributes`)}
                       placeholder="Size: M, Color: Red"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Barcode (optional)</Label>
+                    <Input
+                      {...register(`variants.${index}.barcode`)}
+                      placeholder="Leave blank to use the SKU (printed labels encode the SKU)"
                     />
                   </div>
                   <div className="space-y-2">

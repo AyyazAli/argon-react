@@ -13,6 +13,10 @@ export interface Product {
   printingSide?: string
   language?: string
   picture?: string
+  // Inventory link prep (captured from Shopify / WooCommerce when present)
+  sku?: string
+  externalProductId?: string
+  externalVariantId?: string
 }
 
 export interface Billing {

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -23,26 +25,22 @@ import {
 } from '@/components/ui/select'
 import { useMovements } from '@/hooks'
 import { formatDateTime } from '@/lib/utils'
-import { MOVEMENT_LABELS, movementBadgeVariant } from '@/components/inventory'
+import { MOVEMENT_LABELS, REASON_LABELS, movementBadgeVariant } from '@/components/inventory'
 import type { MovementType } from '@/types'
 
 const ALL = '__all__'
-const TYPES: MovementType[] = [
-  'receipt',
-  'adjustment',
-  'opening',
-  'transfer_in',
-  'transfer_out',
-  'correction',
-]
+const TYPES = Object.keys(MOVEMENT_LABELS) as MovementType[]
 
 export function StockMovementsPage() {
+  const [params, setParams] = useSearchParams()
+  const sessionId = params.get('sessionId') || undefined
   const [type, setType] = useState<MovementType | ''>('')
   const [page, setPage] = useState(1)
   const limit = 50
 
   const { data, isLoading } = useMovements({
     type: type || undefined,
+    sessionId,
     page,
     limit,
   })
@@ -79,6 +77,21 @@ export function StockMovementsPage() {
               ))}
             </SelectContent>
           </Select>
+          {sessionId && (
+            <Badge variant="secondary" className="gap-1 py-1">
+              Session {sessionId.slice(-6)}
+              <button
+                type="button"
+                aria-label="Clear session filter"
+                onClick={() => {
+                  setParams({})
+                  setPage(1)
+                }}
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
         </CardContent>
       </Card>
 
@@ -97,6 +110,7 @@ export function StockMovementsPage() {
                     <TableHead>Product</TableHead>
                     <TableHead>SKU</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Reason</TableHead>
                     <TableHead>Warehouse</TableHead>
                     <TableHead className="text-center">Change</TableHead>
                     <TableHead className="text-center">On Hand After</TableHead>
@@ -107,7 +121,7 @@ export function StockMovementsPage() {
                 <TableBody>
                   {movements.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
                         No movements found
                       </TableCell>
                     </TableRow>
@@ -125,6 +139,10 @@ export function StockMovementsPage() {
                           <Badge variant={movementBadgeVariant(m.type)}>
                             {MOVEMENT_LABELS[m.type]}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {m.reasonCode ? REASON_LABELS[m.reasonCode] : '-'}
+                          {m.reference ? <span className="block text-xs">{m.reference}</span> : null}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {typeof m.warehouse === 'object' && m.warehouse ? m.warehouse.name : '-'}

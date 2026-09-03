@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart3,
+  ScanLine,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { ACCESS } from '@/lib/roles'
@@ -122,6 +123,12 @@ const navGroups: NavGroup[] = [
         roles: ACCESS.inventory,
       },
       {
+        path: '/inventory/scan',
+        title: 'Scan / Stock Actions',
+        icon: <ScanLine className="size-5" />,
+        roles: ACCESS.inventory,
+      },
+      {
         path: '/inventory/products',
         title: 'Products',
         icon: <Package className="size-5" />,
@@ -137,13 +144,13 @@ const navGroups: NavGroup[] = [
         path: '/inventory/categories',
         title: 'Categories',
         icon: <FolderTree className="size-5" />,
-        roles: ACCESS.inventory,
+        roles: ACCESS.inventoryAdmin,
       },
       {
         path: '/inventory/warehouses',
         title: 'Warehouses',
         icon: <Boxes className="size-5" />,
-        roles: ACCESS.inventory,
+        roles: ACCESS.inventoryAdmin,
       },
     ],
   },

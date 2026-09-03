@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { useCallback } from 'react'
 import { inventoryApi } from '@/services'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores'
+import { ACCESS } from '@/lib/roles'
 import type {
   ProductInput,
   ReceiptInput,
   AdjustmentInput,
   MovementQuery,
   ProductQuery,
+  BatchInput,
+  BatchLineError,
+  LookupResult,
 } from '@/types'
 
 /** Pull the server-provided message out of an axios error, with a fallback. */
@@ -19,6 +25,11 @@ function errMsg(error: unknown, fallback: string): string {
 }
 
 const ROOT = ['inventory'] as const
+
+/** True when the user may edit the catalogue (products, prices, categories, warehouses). */
+export function useIsInventoryAdmin(): boolean {
+  return useAuthStore((s) => s.hasRole(...ACCESS.inventoryAdmin))
+}
 
 // ---- Products ----
 export function useProducts(query: ProductQuery = {}) {
@@ -189,6 +200,69 @@ export function useAdjustStock() {
     },
     onError: (e) => toast.error(errMsg(e, 'Failed to adjust stock')),
   })
+}
+
+/** Error thrown by useCommitBatch when the server rejects the batch (400). */
+export class BatchValidationError extends Error {
+  errors: BatchLineError[]
+  constructor(message: string, errors: BatchLineError[]) {
+    super(message)
+    this.name = 'BatchValidationError'
+    this.errors = errors
+  }
+}
+
+/**
+ * Commit a scan session. A 400 with per-line `errors[]` is rethrown as a
+ * BatchValidationError so the page can mark the offending lines; other
+ * failures are toasted like every other mutation.
+ */
+export function useCommitBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: BatchInput) => {
+      try {
+        return (await inventoryApi.commitBatch(data)).data
+      } catch (e) {
+        if (e instanceof AxiosError && e.response?.status === 400 && Array.isArray(e.response.data?.errors)) {
+          throw new BatchValidationError(e.response.data.message || 'Batch validation failed', e.response.data.errors)
+        }
+        throw e
+      }
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ROOT })
+      toast.success(
+        res.applied > 0
+          ? `Committed ${res.applied} line(s)${res.skipped ? `, ${res.skipped} unchanged` : ''}`
+          : 'Nothing to apply — no changes'
+      )
+    },
+    onError: (e) => {
+      if (e instanceof BatchValidationError) {
+        toast.error(`${e.errors.length} line(s) need attention`)
+      } else {
+        toast.error(errMsg(e, 'Failed to commit'))
+      }
+    },
+  })
+}
+
+/**
+ * Imperative code lookup for the scanner. Cached per code for a minute so
+ * re-scanning the same label doesn't hit the server again.
+ */
+export function useLookupCode() {
+  const qc = useQueryClient()
+  return useCallback(
+    (code: string): Promise<LookupResult> =>
+      qc.fetchQuery({
+        queryKey: ['inventory', 'lookup', code.trim().toLowerCase()],
+        queryFn: async () => (await inventoryApi.lookup(code.trim())).data,
+        staleTime: 60_000,
+      }),
+    [qc]
+  )
 }
 
 export function useMovements(query: MovementQuery = {}) {

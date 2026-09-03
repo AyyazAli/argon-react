@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { saveAs } from 'file-saver'
 import {
   Plus,
@@ -8,9 +8,8 @@ import {
   Download,
   Package,
   AlertTriangle,
-  Pencil,
-  Archive,
-  Eye,
+  Tag,
+  ScanLine,
 } from 'lucide-react'
 import {
   Card,
@@ -19,6 +18,7 @@ import {
   Input,
   Badge,
   Spinner,
+  Checkbox,
 } from '@/components/ui'
 import {
   Table,
@@ -35,17 +35,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useProducts, useProductCategories, useArchiveProduct } from '@/hooks'
+import { useProducts, useProductCategories, useArchiveProduct, useIsInventoryAdmin } from '@/hooks'
 import { inventoryApi } from '@/services'
 import { formatCurrency } from '@/lib/utils'
-import { ProductFormDialog, ImportCsvDialog } from '@/components/inventory'
+import {
+  ProductFormDialog,
+  ImportCsvDialog,
+  PrintLabelsDialog,
+  ReceiveStockDialog,
+  DeductStockDialog,
+  AdjustStockDialog,
+  TransferStockDialog,
+  StockActionMenu,
+} from '@/components/inventory'
 import type { InventoryProduct } from '@/types'
 import { toast } from 'sonner'
 
 const ALL = '__all__'
 
+type StockDialog = { kind: 'receive' | 'deduct' | 'adjust' | 'transfer'; product: InventoryProduct } | null
+type LabelTarget = { products: InventoryProduct[]; preselect?: string[]; key: string } | null
+
 export function ProductsPage() {
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const isAdmin = useIsInventoryAdmin()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
@@ -61,6 +75,20 @@ export function ProductsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryProduct | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [stockDialog, setStockDialog] = useState<StockDialog>(null)
+  const [labelTarget, setLabelTarget] = useState<LabelTarget>(null)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+
+  // `?labels=1` deep link from the dashboard: the label dialog target is
+  // derived from the URL until the user closes it (which clears the param) —
+  // no state syncing in effects needed.
+  const wantsLabels = params.get('labels') === '1'
+  const effectiveLabelTarget: LabelTarget =
+    labelTarget ?? (wantsLabels && products && products.length > 0 ? { products, key: 'all' } : null)
+  const closeLabels = () => {
+    setLabelTarget(null)
+    if (wantsLabels) setParams({}, { replace: true })
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -86,6 +114,23 @@ export function ProductsPage() {
     }
   }
 
+  const toggleSelected = (id: string, on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  const allIds = products?.map((p) => p._id) ?? []
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id))
+
+  const printSelectedOrAll = () => {
+    if (!products) return
+    const chosen = selected.size > 0 ? products.filter((p) => selected.has(p._id)) : products
+    setLabelTarget({ products: chosen, key: chosen.map((p) => p._id).join(',') })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -94,18 +139,30 @@ export function ProductsPage() {
           <p className="text-muted-foreground">Manage your product catalog and stock</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="size-4" />
-            Import
+          <Button variant="outline" onClick={() => navigate('/inventory/scan')}>
+            <ScanLine className="size-4" />
+            Scan
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="size-4" />
-            Export
+          <Button variant="outline" onClick={printSelectedOrAll} disabled={!products || products.length === 0}>
+            <Tag className="size-4" />
+            Print Labels{selected.size > 0 ? ` (${selected.size})` : ''}
           </Button>
-          <Button onClick={openCreate}>
-            <Plus className="size-4" />
-            Add Product
-          </Button>
+          {isAdmin && (
+            <>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="size-4" />
+                Import
+              </Button>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="size-4" />
+                Export
+              </Button>
+              <Button onClick={openCreate}>
+                <Plus className="size-4" />
+                Add Product
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -155,10 +212,17 @@ export function ProductsPage() {
               <Spinner size="lg" />
             </div>
           ) : (
-            <div className="rounded-lg border">
+            <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={(c) => setSelected(c === true ? new Set(allIds) : new Set())}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead className="text-center">Variants</TableHead>
                     <TableHead>Category</TableHead>
@@ -172,7 +236,7 @@ export function ProductsPage() {
                 <TableBody>
                   {!products || products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
                         <Package className="mx-auto mb-2 size-8 opacity-50" />
                         No products found
                       </TableCell>
@@ -184,6 +248,13 @@ export function ProductsPage() {
                         className="cursor-pointer"
                         onClick={() => navigate(`/inventory/products/${product._id}`)}
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selected.has(product._id)}
+                            onCheckedChange={(c) => toggleSelected(product._id, c === true)}
+                            aria-label={`Select ${product.name}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             {product.name}
@@ -213,23 +284,18 @@ export function ProductsPage() {
                           className="text-right"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/inventory/products/${product._id}`)}
-                            >
-                              <Eye className="size-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(product)}>
-                              <Pencil className="size-4" />
-                            </Button>
-                            {product.status === 'active' && (
-                              <Button variant="ghost" size="sm" onClick={() => handleArchive(product)}>
-                                <Archive className="size-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
+                          <StockActionMenu
+                            compact
+                            product={product}
+                            onReceive={() => setStockDialog({ kind: 'receive', product })}
+                            onDeduct={() => setStockDialog({ kind: 'deduct', product })}
+                            onAdjust={() => setStockDialog({ kind: 'adjust', product })}
+                            onTransfer={() => setStockDialog({ kind: 'transfer', product })}
+                            onPrintLabels={() => setLabelTarget({ products: [product], key: product._id })}
+                            onView={() => navigate(`/inventory/products/${product._id}`)}
+                            onEdit={() => openEdit(product)}
+                            onArchive={() => handleArchive(product)}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
@@ -247,9 +313,57 @@ export function ProductsPage() {
           open
           onOpenChange={(o) => !o && setFormOpen(false)}
           product={editing}
+          onCreated={(created) =>
+            setLabelTarget({
+              products: [created],
+              preselect: created.variants.map((v) => v._id ?? ''),
+              key: `new-${created._id}`,
+            })
+          }
         />
       )}
       {importOpen && <ImportCsvDialog open onOpenChange={(o) => !o && setImportOpen(false)} />}
+      {effectiveLabelTarget && (
+        <PrintLabelsDialog
+          key={effectiveLabelTarget.key}
+          open
+          onOpenChange={(o) => !o && closeLabels()}
+          products={effectiveLabelTarget.products}
+          preselectVariantIds={effectiveLabelTarget.preselect}
+        />
+      )}
+      {stockDialog?.kind === 'receive' && (
+        <ReceiveStockDialog
+          key={stockDialog.product._id}
+          open
+          onOpenChange={(o) => !o && setStockDialog(null)}
+          product={stockDialog.product}
+        />
+      )}
+      {stockDialog?.kind === 'deduct' && (
+        <DeductStockDialog
+          key={stockDialog.product._id}
+          open
+          onOpenChange={(o) => !o && setStockDialog(null)}
+          product={stockDialog.product}
+        />
+      )}
+      {stockDialog?.kind === 'adjust' && (
+        <AdjustStockDialog
+          key={stockDialog.product._id}
+          open
+          onOpenChange={(o) => !o && setStockDialog(null)}
+          product={stockDialog.product}
+        />
+      )}
+      {stockDialog?.kind === 'transfer' && (
+        <TransferStockDialog
+          key={stockDialog.product._id}
+          open
+          onOpenChange={(o) => !o && setStockDialog(null)}
+          product={stockDialog.product}
+        />
+      )}
     </div>
   )
 }

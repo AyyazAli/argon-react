@@ -12,6 +12,7 @@ export const ROLES = {
   operationManager: 'operationManager',
   bulkOrder: 'bulkOrder',
   financeManager: 'financeManager',
+  inventoryOperator: 'inventoryOperator',
   user: 'user',
 } as const
 
@@ -25,6 +26,7 @@ export const ASSIGNABLE_ROLES: { value: Role; label: string }[] = [
   { value: ROLES.bulkOrder, label: 'Bulk Order' },
   { value: ROLES.operationManager, label: 'Operation Manager' },
   { value: ROLES.financeManager, label: 'Finance Manager' },
+  { value: ROLES.inventoryOperator, label: 'Inventory Operator' },
 ]
 
 /**
@@ -43,7 +45,11 @@ export const ACCESS = {
   // Accounts / Finance (admin intentionally excluded)
   accounts: [ROLES.superAdmin, ROLES.financeManager],
 
-  inventory: [ROLES.superAdmin, ROLES.admin],
+  // Inventory: operators can scan / receive / deduct / count and read;
+  // only inventoryAdmin can edit products, prices, categories, warehouses,
+  // import/export. Mirrors backend/utils/roles.js.
+  inventory: [ROLES.superAdmin, ROLES.admin, ROLES.inventoryOperator],
+  inventoryAdmin: [ROLES.superAdmin, ROLES.admin],
 
   users: [ROLES.superAdmin],
 

@@ -13,6 +13,9 @@ import type {
   AdjustmentInput,
   MovementQuery,
   ProductQuery,
+  LookupResult,
+  BatchInput,
+  BatchResult,
 } from '@/types'
 
 const BASE = '/api/argon/inventory'
@@ -51,6 +54,14 @@ export const inventoryApi = {
 
   archiveProduct: async (id: string): Promise<ApiResponse<InventoryProduct>> => {
     const response = await api.delete<ApiResponse<InventoryProduct>>(`${BASE}/products/${id}`)
+    return response.data
+  },
+
+  /** Resolve a scanned / typed SKU or barcode to a variant. 404 when unknown. */
+  lookup: async (code: string): Promise<ApiResponse<LookupResult>> => {
+    const response = await api.get<ApiResponse<LookupResult>>(`${BASE}/lookup`, {
+      params: { code },
+    })
     return response.data
   },
 
@@ -115,6 +126,12 @@ export const inventoryApi = {
 
   adjustStock: async (data: AdjustmentInput): Promise<ApiResponse<{ product: InventoryProduct; movement: StockMovement }>> => {
     const response = await api.post(`${BASE}/movements/adjustment`, data)
+    return response.data
+  },
+
+  /** Commit a whole scan session (receive / deduct / count) at once. */
+  commitBatch: async (data: BatchInput): Promise<ApiResponse<BatchResult>> => {
+    const response = await api.post<ApiResponse<BatchResult>>(`${BASE}/movements/batch`, data)
     return response.data
   },
 

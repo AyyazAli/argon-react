@@ -75,9 +75,28 @@ export type MovementType =
   | 'receipt'
   | 'adjustment'
   | 'opening'
+  | 'sale'
+  | 'write_off'
+  | 'internal'
   | 'transfer_in'
   | 'transfer_out'
   | 'correction'
+
+export type ReasonCode =
+  | 'purchase'
+  | 'walk_in'
+  | 'order'
+  | 'damaged'
+  | 'lost'
+  | 'expired'
+  | 'sample'
+  | 'internal'
+  | 'gift'
+  | 'count'
+  | 'manual'
+  | 'transfer'
+
+export type ScanMode = 'receive' | 'deduct' | 'count' | 'transfer'
 
 export interface StockMovement {
   _id: string
@@ -92,8 +111,102 @@ export interface StockMovement {
   unitCost?: number
   note?: string
   reference?: string
+  reasonCode?: ReasonCode
+  sessionId?: string
   createdBy?: { _id: string; name: string } | string
   dateCreated: string
+}
+
+/** Result of resolving a scanned / typed code to a variant. */
+export interface LookupResult {
+  productId: string
+  productName: string
+  category?: string
+  variantId: string
+  sku: string
+  barcode?: string
+  attributes: VariantAttribute[]
+  costPrice: number
+  sellingPrice?: number
+  reorderPoint?: number
+  totalQuantity: number
+  isLowStock: boolean
+  stock: StockEntry[]
+}
+
+// ---- Scan session batch ----
+
+export interface BatchLineInput {
+  productId: string
+  variantId: string
+  /** Units received / deducted; for `count` mode the counted on-hand. */
+  quantity: number
+  unitCost?: number
+}
+
+export interface BatchInput {
+  mode: ScanMode
+  reasonCode?: ReasonCode
+  reference?: string
+  note?: string
+  warehouseId?: string
+  /** Transfer mode only. */
+  fromWarehouseId?: string
+  toWarehouseId?: string
+  lines: BatchLineInput[]
+}
+
+export interface BatchLineResult {
+  lineIndex: number
+  productId: string
+  variantId: string
+  sku: string
+  type: MovementType
+  quantityChange: number
+  quantityAfter: number
+  movementId: string
+}
+
+export interface BatchLineError {
+  lineIndex: number
+  sku?: string
+  message: string
+}
+
+export interface BatchResult {
+  sessionId: string
+  mode: ScanMode
+  applied: number
+  skipped: number
+  skippedLines: BatchLineError[]
+  results: BatchLineResult[]
+}
+
+// ---- Labels ----
+
+/** All dimensions in millimetres, on an A4 portrait sheet. */
+export interface LabelGrid {
+  id: string
+  name: string
+  columns: number
+  rows: number
+  labelWidth: number
+  labelHeight: number
+  marginTop: number
+  marginLeft: number
+  gapX: number
+  gapY: number
+}
+
+/** Which machine-readable code(s) to print on a label. */
+export type LabelCodeType = 'both' | 'qr' | 'barcode'
+
+export interface LabelItem {
+  sku: string
+  productName: string
+  attributes: string
+  qrDataUrl?: string
+  barcodeDataUrl?: string
 }
 
 // ---- Report DTOs ----
@@ -172,6 +285,8 @@ export interface MovementQuery {
   variantId?: string
   warehouse?: string
   type?: MovementType
+  reasonCode?: ReasonCode
+  sessionId?: string
   dateFrom?: string
   dateTo?: string
   page?: number
