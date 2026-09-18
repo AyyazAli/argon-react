@@ -1,6 +1,8 @@
 export { ProductFormDialog } from './ProductFormDialog'
 export { ReceiveStockDialog, AdjustStockDialog, DeductStockDialog, TransferStockDialog } from './StockDialogs'
 export { ImportCsvDialog } from './ImportCsvDialog'
+export { ShopifyImportDialog } from './ShopifyImportDialog'
+export { ProductThumb } from './ProductThumb'
 export { PrintLabelsDialog } from './PrintLabelsDialog'
 export { LabelSheetPDF } from './LabelSheetPDF'
 export { ScanInput } from './ScanInput'

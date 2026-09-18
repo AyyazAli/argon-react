@@ -314,3 +314,22 @@ export interface ProductQuery {
   status?: 'active' | 'archived'
   lowStock?: boolean
 }
+
+// ---- Shopify import ----
+export interface ShopifyImportResult {
+  store: string
+  business: string
+  dryRun: boolean
+  includeStock: boolean
+  shopifyProducts: number
+  shopifyVariants: number
+  productsToCreate: number
+  variantsToCreate: number
+  unitsOpeningStock: number
+  skipped: Array<{ product: string; sku: string; reason: string }>
+  flagged: Array<{ product: string; shopifySku: string; sku: string; reason: string }>
+  warnings: string[]
+  productsCreated?: number
+  movementsCreated?: number
+  sessionId?: string
+}

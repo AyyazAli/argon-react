@@ -97,6 +97,20 @@ export function useImportProducts() {
   })
 }
 
+/** Preview (dryRun) or run the Shopify catalogue import. */
+export function useShopifyImport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { dryRun: boolean; includeStock: boolean }) => inventoryApi.importFromShopify(input),
+    onSuccess: (res) => {
+      if (res.data.dryRun) return
+      qc.invalidateQueries({ queryKey: ROOT })
+      toast.success(`Imported ${res.data.productsCreated ?? 0} product(s) from Shopify`)
+    },
+    onError: (e) => toast.error(errMsg(e, 'Shopify import failed')),
+  })
+}
+
 // ---- Categories ----
 export function useProductCategories() {
   return useQuery({

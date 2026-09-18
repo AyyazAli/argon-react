@@ -32,6 +32,7 @@ import { useProduct, useMovements, useIsInventoryAdmin } from '@/hooks'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import {
   ProductFormDialog,
+  ProductThumb,
   ReceiveStockDialog,
   AdjustStockDialog,
   DeductStockDialog,
@@ -88,6 +89,7 @@ export function ProductDetailPage() {
             <ArrowLeft className="size-4" />
             Back
           </Button>
+          <ProductThumb src={product.imageUrl} alt={product.name} size={64} />
           <div>
             <h2 className="text-2xl font-bold tracking-tight">{product.name}</h2>
             <p className="text-sm text-muted-foreground">

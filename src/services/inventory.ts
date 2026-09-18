@@ -13,6 +13,7 @@ import type {
   AdjustmentInput,
   MovementQuery,
   ProductQuery,
+  ShopifyImportResult,
   LookupResult,
   BatchInput,
   BatchResult,
@@ -80,6 +81,14 @@ export const inventoryApi = {
     const response = await api.post(`${BASE}/products/import`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return response.data
+  },
+
+  importFromShopify: async (input: {
+    dryRun: boolean
+    includeStock: boolean
+  }): Promise<ApiResponse<ShopifyImportResult>> => {
+    const response = await api.post(`${BASE}/products/import/shopify`, input)
     return response.data
   },
 

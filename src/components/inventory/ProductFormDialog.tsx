@@ -27,6 +27,7 @@ import { useCreateProduct, useUpdateProduct, useProductCategories } from '@/hook
 import { useVendors } from '@/hooks/useAccounting'
 import type { InventoryProduct, ProductInput } from '@/types'
 import { parseAttributes, stringifyAttributes, toNumber, SKU_PATTERN, SKU_HINT } from './inventoryUtils'
+import { ProductThumb } from './ProductThumb'
 
 const variantSchema = z.object({
   _id: z.string().optional(),
@@ -46,6 +47,7 @@ const variantSchema = z.object({
 const schema = z.object({
   name: z.string().min(1, 'Product name is required'),
   description: z.string().optional(),
+  imageUrl: z.union([z.literal(''), z.string().trim().url('Enter a full image URL (https://...)')]).optional(),
   category: z.string().optional(),
   supplier: z.string().optional(),
   reorderPoint: z.string().optional(),
@@ -74,6 +76,7 @@ function toDefaults(product?: InventoryProduct | null): FormValues {
     return {
       name: '',
       description: '',
+      imageUrl: '',
       category: '',
       supplier: '',
       reorderPoint: '0',
@@ -83,6 +86,7 @@ function toDefaults(product?: InventoryProduct | null): FormValues {
   return {
     name: product.name,
     description: product.description || '',
+    imageUrl: product.imageUrl || '',
     category: product.category?._id || '',
     supplier: product.supplier?._id || '',
     reorderPoint: String(product.reorderPoint ?? 0),
@@ -124,6 +128,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onCreated }: Pr
     const payload: ProductInput = {
       name: values.name,
       description: values.description || undefined,
+      imageUrl: values.imageUrl?.trim() ?? '', // '' clears the image on update
       category: values.category || undefined,
       supplier: values.supplier || undefined,
       reorderPoint: toNumber(values.reorderPoint) ?? 0,
@@ -212,6 +217,15 @@ export function ProductFormDialog({ open, onOpenChange, product, onCreated }: Pr
             <div className="space-y-2">
               <Label htmlFor="reorderPoint">Default Reorder Point</Label>
               <Input id="reorderPoint" type="number" {...register('reorderPoint')} placeholder="0" />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="imageUrl">Image URL (optional)</Label>
+              <div className="flex items-center gap-3">
+                <ProductThumb src={watch('imageUrl') || undefined} alt="Preview" />
+                <Input id="imageUrl" {...register('imageUrl')} placeholder="https://cdn.shopify.com/..." />
+              </div>
+              {errors.imageUrl && <p className="text-sm text-destructive">{errors.imageUrl.message}</p>}
             </div>
 
             <div className="space-y-2 sm:col-span-2">

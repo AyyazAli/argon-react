@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Tag,
   ScanLine,
+  Store,
 } from 'lucide-react'
 import {
   Card,
@@ -41,6 +42,8 @@ import { formatCurrency } from '@/lib/utils'
 import {
   ProductFormDialog,
   ImportCsvDialog,
+  ShopifyImportDialog,
+  ProductThumb,
   PrintLabelsDialog,
   ReceiveStockDialog,
   DeductStockDialog,
@@ -75,6 +78,7 @@ export function ProductsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryProduct | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [shopifyOpen, setShopifyOpen] = useState(false)
   const [stockDialog, setStockDialog] = useState<StockDialog>(null)
   const [labelTarget, setLabelTarget] = useState<LabelTarget>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
@@ -152,6 +156,10 @@ export function ProductsPage() {
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload className="size-4" />
                 Import
+              </Button>
+              <Button variant="outline" onClick={() => setShopifyOpen(true)}>
+                <Store className="size-4" />
+                Import from Shopify
               </Button>
               <Button variant="outline" onClick={handleExport}>
                 <Download className="size-4" />
@@ -256,7 +264,8 @@ export function ProductsPage() {
                           />
                         </TableCell>
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
+                            <ProductThumb src={product.imageUrl} alt={product.name} />
                             {product.name}
                             {product.lowStock && (
                               <Badge variant="warning" className="gap-1">
@@ -323,6 +332,7 @@ export function ProductsPage() {
         />
       )}
       {importOpen && <ImportCsvDialog open onOpenChange={(o) => !o && setImportOpen(false)} />}
+      {shopifyOpen && <ShopifyImportDialog open onOpenChange={(o) => !o && setShopifyOpen(false)} />}
       {effectiveLabelTarget && (
         <PrintLabelsDialog
           key={effectiveLabelTarget.key}
