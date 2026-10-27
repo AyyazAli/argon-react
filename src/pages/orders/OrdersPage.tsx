@@ -53,7 +53,8 @@ import {
 } from '@/components/ui/dialog'
 import { OrderDetailsModal } from './OrderDetailsModal'
 import { CityCombobox } from './CityCombobox'
-import type { Order, OrderStatus, CourierCompany, City } from '@/types'
+import { PrintBlockedDialog } from './PrintBlockedDialog'
+import type { Order, OrderStatus, CourierCompany, City, PrintBlockedOrder } from '@/types'
 import {
   RefreshCw,
   Search,
@@ -113,6 +114,7 @@ export function OrdersPage() {
 
   const [isGeneratingLabels, setIsGeneratingLabels] = useState(false)
   const [manualCompany, setManualCompany] = useState('')
+  const [printBlocked, setPrintBlocked] = useState<PrintBlockedOrder[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedCompany, setSelectedCompany] = useState<CourierCompany | ''>('')
@@ -229,6 +231,9 @@ export function OrdersPage() {
       { company: selectedCompany, orderIds },
       {
         onSuccess: (data) => {
+          if (selectedCompany === 'printfile' && 'blocked' in data.data && data.data.blocked?.length) {
+            setPrintBlocked(data.data.blocked)
+          }
           if (selectedCompany === 'trax') {
             const orders = Array.isArray(data.data) ? data.data : (data.data as { orders?: Order[] }).orders || []
             const trackingIds: string[] = []
@@ -256,7 +261,11 @@ export function OrdersPage() {
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      generateFromCSV.mutate(file)
+      generateFromCSV.mutate(file, {
+        onSuccess: (data) => {
+          if (data.data.blocked?.length) setPrintBlocked(data.data.blocked)
+        },
+      })
       e.target.value = ''
     }
   }
@@ -643,6 +652,10 @@ export function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {printBlocked.length > 0 && (
+        <PrintBlockedDialog blocked={printBlocked} onClose={() => setPrintBlocked([])} />
+      )}
 
       {/* Trax Receiving Sheet Dialog */}
       <Dialog

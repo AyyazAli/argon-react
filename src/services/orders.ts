@@ -1,5 +1,5 @@
 import api from '@/lib/api'
-import type { Order, OrderStats, City, ApiResponse } from '@/types'
+import type { Order, OrderStats, City, ApiResponse, PrintFileResult } from '@/types'
 
 export const ordersApi = {
   // Fetch all orders
@@ -158,23 +158,19 @@ export const ordersApi = {
   // Generate print file
   generatePrintfile: async (
     ids: string[]
-  ): Promise<ApiResponse<{ orders: Order[]; file: string }>> => {
-    const response = await api.patch<
-      ApiResponse<{ orders: Order[]; file: string }>
-    >('/api/argon/orders/generate-print-file', ids)
+  ): Promise<ApiResponse<PrintFileResult>> => {
+    const response = await api.patch<ApiResponse<PrintFileResult>>('/api/argon/orders/generate-print-file', ids)
     return response.data
   },
 
   // Generate print file from CSV
   generatePrintfileFromCSV: async (
     file: File
-  ): Promise<ApiResponse<{ orders: Order[]; file: string }>> => {
+  ): Promise<ApiResponse<PrintFileResult>> => {
     const formData = new FormData()
     formData.append('csvFile', file)
 
-    const response = await api.post<
-      ApiResponse<{ orders: Order[]; file: string }>
-    >('/api/argon/orders/generate-print-file-from-csv', formData, {
+    const response = await api.post<ApiResponse<PrintFileResult>>('/api/argon/orders/generate-print-file-from-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return response.data

@@ -132,3 +132,27 @@ export interface City {
   name: string
 }
 
+
+/** An order held back from printing because its stock isn't available ('printing' deduct mode). */
+export interface PrintBlockedOrder {
+  _id: string
+  orderId: string
+  cn?: number
+  status: OrderStatus
+  message: string
+  problems: Array<{
+    name: string
+    sku: string
+    code: 'no_sku' | 'unmatched' | 'short'
+    needed: number
+    onHand: number
+    message: string
+  }>
+}
+
+export interface PrintFileResult {
+  orders: Order[]
+  file: string | null
+  blocked?: PrintBlockedOrder[]
+  deductOn?: 'dispatch' | 'printing'
+}

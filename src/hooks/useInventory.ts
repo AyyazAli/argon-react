@@ -14,6 +14,7 @@ import type {
   BatchInput,
   BatchLineError,
   LookupResult,
+  DeductOn,
 } from '@/types'
 
 /** Pull the server-provided message out of an axios error, with a fallback. */
@@ -287,6 +288,30 @@ export function useMovements(query: MovementQuery = {}) {
 }
 
 // ---- Order stock issues ----
+// ---- Settings ----
+export function useInventorySettings() {
+  return useQuery({
+    queryKey: ['inventory', 'settings'],
+    queryFn: async () => (await inventoryApi.getSettings()).data,
+  })
+}
+
+export function useUpdateInventorySettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (deductOn: DeductOn) => inventoryApi.updateSettings(deductOn),
+    onSuccess: (res) => {
+      qc.setQueryData(['inventory', 'settings'], res.data)
+      toast.success(
+        res.data.deductOn === 'printing'
+          ? 'Stock will now be deducted when the print file is generated'
+          : 'Stock will now be deducted when orders are dispatched'
+      )
+    },
+    onError: (e) => toast.error(errMsg(e, 'Failed to save settings')),
+  })
+}
+
 export function useOrderStockIssues() {
   return useQuery({
     queryKey: ['inventory', 'order-issues'],

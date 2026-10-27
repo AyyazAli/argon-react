@@ -466,13 +466,13 @@ export function InvoicesPage() {
                                   Reassign
                                 </DropdownMenuItem>
                               )}
-                              {isAdmin && (
+                              {isAdmin && (invoice.status === 'sent' || invoice.status === 'pending_payment') && (
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(invoice)}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Trash2 className="size-4 mr-2" />
-                                  Delete
+                                  Cancel invoice
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
@@ -573,15 +573,15 @@ export function InvoicesPage() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
+            <DialogTitle>Cancel Invoice</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete invoice "{invoiceToDelete?.invoiceNumber}"?
-              This action cannot be undone.
+              Cancel invoice "{invoiceToDelete?.invoiceNumber}"? It stays in the list as Cancelled (its number is never
+              reused) and its quotation is reopened so you can generate a corrected invoice. This can't be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
+              Keep invoice
             </Button>
             <Button
               variant="destructive"
@@ -589,7 +589,7 @@ export function InvoicesPage() {
               disabled={deleteInvoice.isPending}
             >
               {deleteInvoice.isPending && <Spinner size="sm" />}
-              Delete
+              Cancel invoice
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -18,6 +18,8 @@ import type {
   BatchInput,
   BatchResult,
   OrderStockIssue,
+  InventorySettings,
+  DeductOn,
   OrderInventorySummary,
 } from '@/types'
 
@@ -154,6 +156,17 @@ export const inventoryApi = {
   },
 
   // ---- Order-driven deductions needing review ----
+  // ---- Settings ----
+  getSettings: async (): Promise<ApiResponse<InventorySettings>> => {
+    const response = await api.get<ApiResponse<InventorySettings>>(`${BASE}/settings`)
+    return response.data
+  },
+
+  updateSettings: async (deductOn: DeductOn): Promise<ApiResponse<InventorySettings>> => {
+    const response = await api.put<ApiResponse<InventorySettings>>(`${BASE}/settings`, { deductOn })
+    return response.data
+  },
+
   getOrderIssues: async (): Promise<ApiResponse<OrderStockIssue[]>> => {
     const response = await api.get<ApiResponse<OrderStockIssue[]>>(`${BASE}/orders/issues`)
     return response.data

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { bulkCustomersApi, quotationsApi, invoicesApi, bankAccountsApi } from '@/services'
 import { toast } from 'sonner'
+import { AxiosError } from 'axios'
 import type {
   BulkCustomerInput,
   QuotationInput,
@@ -230,10 +231,13 @@ export function useUpdateInvoiceStatus() {
       invoicesApi.updateInvoiceStatus(id, status, notes),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      // Cancelling an invoice reopens its quotation.
+      if (variables.status === 'cancelled') queryClient.invalidateQueries({ queryKey: ['quotations'] })
       toast.success(`Status updated to ${variables.status.replace('_', ' ')}`)
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update status')
+      const message = error instanceof AxiosError ? error.response?.data?.message : undefined
+      toast.error(message || error.message || 'Failed to update status')
     },
   })
 }
@@ -242,13 +246,16 @@ export function useDeleteInvoice() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    // The backend cancels (never deletes) and reopens the quotation.
     mutationFn: (id: string) => invoicesApi.deleteInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      toast.success('Invoice deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['quotations'] })
+      toast.success('Invoice cancelled — its quotation can be invoiced again')
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete invoice')
+      const message = error instanceof AxiosError ? error.response?.data?.message : undefined
+      toast.error(message || error.message || 'Failed to cancel invoice')
     },
   })
 }

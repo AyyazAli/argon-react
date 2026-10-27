@@ -3,7 +3,23 @@ import { ordersApi } from '@/services'
 import { useOrderStore } from '@/stores'
 import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
-import type { Order, CourierCompany } from '@/types'
+import { AxiosError } from 'axios'
+import type { Order, CourierCompany, PrintBlockedOrder } from '@/types'
+
+/** Server-provided message from an axios error, with a fallback. */
+function errMsg(error: unknown, fallback: string): string {
+  if (error instanceof AxiosError) return error.response?.data?.message || error.message || fallback
+  return error instanceof Error ? error.message : fallback
+}
+
+/** Toast for orders held back from printing because stock isn't available. */
+export function notifyPrintBlocked(blocked: PrintBlockedOrder[] | undefined) {
+  if (!blocked?.length) return
+  toast.warning(`${blocked.length} order(s) not sent to printing — stock not available`, {
+    description: blocked.slice(0, 3).map((b) => b.message).join('\n') + (blocked.length > 3 ? `\n…and ${blocked.length - 3} more` : ''),
+    duration: 12000,
+  })
+}
 
 /**
  * Surface inventory-sync results at the moment of dispatch: a warning when
@@ -118,9 +134,11 @@ export function useGeneratePrintfileFromCSV() {
         saveAs(blob, `print-file-csv-${new Date().toISOString().split('T')[0]}.xlsx`)
       }
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      toast.success('Print file generated from CSV successfully')
+      if (data.data.orders?.length) toast.success(`Print file generated for ${data.data.orders.length} order(s)`)
+      notifyPrintBlocked(data.data.blocked)
+      notifyInventory(inventoryOf(data.data.orders || []))
     },
-    onError: (error: Error) => toast.error(error.message || 'Error generating print file from CSV'),
+    onError: (error: Error) => toast.error(errMsg(error, 'Error generating print file from CSV')),
   })
 }
 
@@ -192,7 +210,7 @@ export function useUpdateOrderStatus() {
     onError: (error: Error, _variables, context) => {
       // Revert on failure
       if (context?.previousOrders) setOrders(context.previousOrders)
-      toast.error(error.message || 'Failed to update order status')
+      toast.error(errMsg(error, 'Failed to update order status'), { duration: 10000 })
     },
   })
 }
@@ -240,11 +258,17 @@ export function useBookOrders() {
 
       clearSelection()
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      toast.success(`Orders booked successfully via ${variables.company}`)
+      if (variables.company === 'printfile') {
+        const blocked = 'blocked' in data.data ? data.data.blocked : undefined
+        if (Array.isArray(orders) && orders.length) toast.success(`Print file generated for ${orders.length} order(s)`)
+        notifyPrintBlocked(blocked)
+      } else {
+        toast.success(`Orders booked successfully via ${variables.company}`)
+      }
       notifyInventory(inventoryOf(orders))
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to book orders')
+      toast.error(errMsg(error, 'Failed to book orders'))
     },
   })
 }

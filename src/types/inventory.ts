@@ -333,3 +333,12 @@ export interface ShopifyImportResult {
   movementsCreated?: number
   sessionId?: string
 }
+
+// ---- Settings ----
+/** When order stock is deducted: on dispatch (default) or when the print file is generated. */
+export type DeductOn = 'dispatch' | 'printing'
+
+export interface InventorySettings {
+  deductOn: DeductOn
+  options: DeductOn[]
+}

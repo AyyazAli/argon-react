@@ -28,6 +28,7 @@ import {
   BarChart3,
   ScanLine,
   AlertTriangle,
+  Settings,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { ACCESS } from '@/lib/roles'
@@ -157,6 +158,12 @@ const navGroups: NavGroup[] = [
         path: '/inventory/warehouses',
         title: 'Warehouses',
         icon: <Boxes className="size-5" />,
+        roles: ACCESS.inventoryAdmin,
+      },
+      {
+        path: '/inventory/settings',
+        title: 'Settings',
+        icon: <Settings className="size-5" />,
         roles: ACCESS.inventoryAdmin,
       },
     ],
