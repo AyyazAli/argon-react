@@ -41,6 +41,9 @@ export const ACCESS = {
   // Bulk Orders restricted sub-sections
   bulkBankAccounts: [ROLES.superAdmin, ROLES.admin],
   bulkReports: [ROLES.superAdmin, ROLES.admin],
+  // Edit an invoice (sent / pending payment). bulkOrder = only their own
+  // invoices (enforced by the backend). Mirrors backend/utils/roles.js.
+  bulkInvoiceEdit: [ROLES.superAdmin, ROLES.admin, ROLES.bulkOrder],
 
   // Accounts / Finance (admin intentionally excluded)
   accounts: [ROLES.superAdmin, ROLES.financeManager],

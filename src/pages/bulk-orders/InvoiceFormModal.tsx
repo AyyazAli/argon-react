@@ -426,7 +426,7 @@ export function InvoiceFormModal({
 
             {!invoice && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <strong>Note:</strong> Once the invoice is generated, it can only be edited by admin/superAdmin.
+                <strong>Note:</strong> Once generated, the invoice can be edited while it is Sent or Pending Payment — by admins, or by its assigned bulk operations manager.
                 Please review all details before proceeding.
               </div>
             )}

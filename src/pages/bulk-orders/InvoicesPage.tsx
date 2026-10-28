@@ -52,6 +52,7 @@ import { Search, FileText, MoreVertical, Download, Plus, Eye, Pencil, Trash2, Us
 import { pdf } from '@react-pdf/renderer'
 import { saveAs } from 'file-saver'
 import { useAuthStore } from '@/stores'
+import { ACCESS } from '@/lib/roles'
 
 const INVOICE_STATUSES: { value: InvoiceStatus; label: string }[] = [
   { value: 'sent', label: 'Sent' },
@@ -108,6 +109,14 @@ export function InvoicesPage() {
   const isAdmin = hasRole('admin', 'superAdmin')
   // Reassigning needs the user list (GET /api/user), which is superAdmin-only.
   const isSuperAdmin = hasRole('superAdmin')
+  const userId = useAuthStore((s) => s.userId)
+  const canEditInvoices = hasRole(...ACCESS.bulkInvoiceEdit)
+  // Editable while sent / pending payment; the bulk operations manager only
+  // edits invoices assigned to them (the backend enforces the same rule).
+  const canEditInvoice = (invoice: BulkInvoice) =>
+    canEditInvoices &&
+    (invoice.status === 'sent' || invoice.status === 'pending_payment') &&
+    (isAdmin || invoice.createdBy?._id === userId)
 
   // Handle quotation param from URL (when clicking "Create Invoice" from Quotations page)
   useEffect(() => {
@@ -449,7 +458,7 @@ export function InvoicesPage() {
                                 <Eye className="size-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              {isAdmin && invoice.status !== 'cancelled' && (
+                              {canEditInvoice(invoice) && (
                                 <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
                                   <Pencil className="size-4 mr-2" />
                                   Edit Invoice
