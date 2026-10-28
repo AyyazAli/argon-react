@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Warehouse as WarehouseIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Warehouse as WarehouseIcon } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -24,14 +24,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
-import { useWarehouses, useCreateWarehouse, useUpdateWarehouse } from '@/hooks'
+import { useWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/hooks'
 import type { Warehouse } from '@/types'
 
 export function WarehousesPage() {
   const { data: warehouses, isLoading } = useWarehouses()
   const createWarehouse = useCreateWarehouse()
   const updateWarehouse = useUpdateWarehouse()
+  const deleteWarehouse = useDeleteWarehouse()
+  const [toDelete, setToDelete] = useState<Warehouse | null>(null)
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Warehouse | null>(null)
@@ -121,9 +124,20 @@ export function WarehousesPage() {
                           {warehouse.isDefault && <Badge variant="success">Default</Badge>}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(warehouse)}>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(warehouse)} aria-label={`Edit ${warehouse.name}`}>
                             <Pencil className="size-4" />
                           </Button>
+                          {!warehouse.isDefault && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setToDelete(warehouse)}
+                              aria-label={`Delete ${warehouse.name}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -159,9 +173,14 @@ export function WarehousesPage() {
               <Checkbox
                 id="wh-default"
                 checked={isDefault}
+                // The default can't be unticked — make another warehouse the default instead.
+                disabled={!!editing?.isDefault}
                 onCheckedChange={(c) => setIsDefault(c === true)}
               />
-              <Label htmlFor="wh-default">Set as default warehouse</Label>
+              <Label htmlFor="wh-default">
+                Set as default warehouse
+                {editing?.isDefault && <span className="ml-1 text-muted-foreground">(to change, make another warehouse the default)</span>}
+              </Label>
             </div>
           </div>
           <DialogFooter>
@@ -170,6 +189,31 @@ export function WarehousesPage() {
             </Button>
             <Button onClick={submit} disabled={isPending || !name.trim()}>
               {isPending ? <Spinner size="sm" /> : editing ? 'Save' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete warehouse</DialogTitle>
+            <DialogDescription>
+              Delete "{toDelete?.name}"? It must be empty — transfer any stock to another warehouse first. Its past
+              stock movements keep showing its name.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteWarehouse.isPending}
+              onClick={() => toDelete && deleteWarehouse.mutate(toDelete._id, { onSuccess: () => setToDelete(null) })}
+            >
+              {deleteWarehouse.isPending && <Spinner size="sm" />}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

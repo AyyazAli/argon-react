@@ -131,6 +131,12 @@ export const inventoryApi = {
     return response.data
   },
 
+  /** Archives the warehouse; refused for the default or while it holds stock. */
+  deleteWarehouse: async (id: string): Promise<ApiResponse<{ _id: string }>> => {
+    const response = await api.delete<ApiResponse<{ _id: string }>>(`${BASE}/warehouses/${id}`)
+    return response.data
+  },
+
   // ---- Stock movements ----
   receiveStock: async (data: ReceiptInput): Promise<ApiResponse<{ product: InventoryProduct; movement: StockMovement }>> => {
     const response = await api.post(`${BASE}/movements/receipt`, data)

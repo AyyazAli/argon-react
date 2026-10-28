@@ -192,6 +192,19 @@ export function useUpdateWarehouse() {
   })
 }
 
+export function useDeleteWarehouse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => inventoryApi.deleteWarehouse(id),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ROOT })
+      toast.success(res.message || 'Warehouse deleted')
+    },
+    // e.g. "still holds 534 unit(s) … Transfer the stock to another warehouse first."
+    onError: (e) => toast.error(errMsg(e, 'Failed to delete warehouse'), { duration: 10000 }),
+  })
+}
+
 // ---- Stock movements ----
 export function useReceiveStock() {
   const qc = useQueryClient()
