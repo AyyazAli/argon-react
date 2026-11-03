@@ -44,7 +44,8 @@ function variantLabel(variant: Variant): string {
  * mounted fresh, so no effect-based syncing is needed).
  */
 function useVariantPick(product: InventoryProduct, fixed?: Variant | null) {
-  const options = product.variants.filter((v) => v.status !== 'archived')
+  // Linked listings hold no stock; their stock is recorded on the master.
+  const options = product.variants.filter((v) => v.status !== 'archived' && !v.stockLink?.variant)
   const [pickedId, setPickedId] = useState<string>(fixed?._id ?? options[0]?._id ?? '')
   const variant = fixed ?? options.find((v) => v._id === pickedId) ?? options[0] ?? null
   return { variant, options, pickedId: variant?._id ?? '', setPickedId, showPicker: !fixed && options.length > 1 }

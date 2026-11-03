@@ -125,6 +125,7 @@ export function ScanPage() {
       const item = await lookup(code)
       session.addOrIncrement(item, stringifyAttributes(item.attributes))
       setLastResult(null)
+      if (item.linkedFrom) toast.info(`${item.linkedFrom.sku} shares stock with ${item.sku} — counted on ${item.productName}`)
     } catch {
       session.addUnresolved(code)
       toast.error(`No item matches "${code}"`)

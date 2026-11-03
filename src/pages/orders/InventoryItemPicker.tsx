@@ -159,7 +159,7 @@ export function InventoryItemPicker({
               >
                 <span className="block font-medium">{v.label || v.sku}</span>
                 <span className={cn('block', v.onHand > 0 ? 'text-muted-foreground' : 'text-destructive')}>
-                  {v.sku} · {v.onHand} in stock
+                  {v.sku} · {v.onHand} in stock{v.sharedWith ? ` (shared with ${v.sharedWith})` : ''}
                 </span>
               </button>
             ))}
@@ -169,7 +169,7 @@ export function InventoryItemPicker({
 
       {product && variant && !needsVariant && (
         <p className={cn('text-xs', variant.onHand > 0 ? 'text-muted-foreground' : 'text-destructive')}>
-          {variant.sku} · {variant.onHand} in stock
+          {variant.sku} · {variant.onHand} in stock{variant.sharedWith ? ` (shared with ${variant.sharedWith})` : ''}
         </p>
       )}
       {product && variant && variant.onHand <= 0 && (

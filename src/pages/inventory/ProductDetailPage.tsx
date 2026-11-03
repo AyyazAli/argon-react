@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   Pencil,
@@ -10,6 +10,7 @@ import {
   Tag,
   ScanLine,
   ArrowLeftRight,
+  Link2,
 } from 'lucide-react'
 import {
   Card,
@@ -38,6 +39,7 @@ import {
   DeductStockDialog,
   TransferStockDialog,
   PrintLabelsDialog,
+  LinkStockDialog,
   stringifyAttributes,
   MOVEMENT_LABELS,
   REASON_LABELS,
@@ -57,6 +59,7 @@ export function ProductDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [stockDialog, setStockDialog] = useState<StockDialog>(null)
   const [labelVariants, setLabelVariants] = useState<string[] | null>(null)
+  const [linkOpen, setLinkOpen] = useState(false)
 
   if (isLoading) {
     return (
@@ -79,6 +82,12 @@ export function ProductDetailPage() {
   }
 
   const movements = movementsRes?.data ?? []
+  // Linked listing variants sell from another product's stock (no stock of their own).
+  const activeVariants = product.variants.filter((v) => v.status !== 'archived')
+  const linkedVariants = activeVariants.filter((v) => v.stockLink?.variant)
+  const fullyLinked = activeVariants.length > 0 && linkedVariants.length === activeVariants.length
+  const masters = [...new Map(linkedVariants.map((v) => [v.linkedStock?.productId ?? 'broken', v.linkedStock])).values()]
+  const listings = product.linkedListings ?? []
   const dialogKey = (kind: string) => `${kind}-${stockDialog?.variant?._id ?? 'pick'}`
 
   return (
@@ -99,18 +108,22 @@ export function ProductDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setStockDialog({ kind: 'receive', variant: null })}>
-            <PackagePlus className="size-4" />
-            Receive
-          </Button>
-          <Button variant="outline" onClick={() => setStockDialog({ kind: 'deduct', variant: null })}>
-            <PackageMinus className="size-4" />
-            Deduct
-          </Button>
-          <Button variant="outline" onClick={() => setStockDialog({ kind: 'transfer', variant: null })}>
-            <ArrowLeftRight className="size-4" />
-            Transfer
-          </Button>
+          {!fullyLinked && (
+            <>
+              <Button onClick={() => setStockDialog({ kind: 'receive', variant: null })}>
+                <PackagePlus className="size-4" />
+                Receive
+              </Button>
+              <Button variant="outline" onClick={() => setStockDialog({ kind: 'deduct', variant: null })}>
+                <PackageMinus className="size-4" />
+                Deduct
+              </Button>
+              <Button variant="outline" onClick={() => setStockDialog({ kind: 'transfer', variant: null })}>
+                <ArrowLeftRight className="size-4" />
+                Transfer
+              </Button>
+            </>
+          )}
           <Button variant="outline" onClick={() => setLabelVariants([])}>
             <Tag className="size-4" />
             Print Labels
@@ -120,6 +133,12 @@ export function ProductDetailPage() {
             Scan
           </Button>
           {isAdmin && (
+            <Button variant="outline" onClick={() => setLinkOpen(true)}>
+              <Link2 className="size-4" />
+              Share stock
+            </Button>
+          )}
+          {isAdmin && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" />
               Edit
@@ -127,6 +146,50 @@ export function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Linked listings */}
+      {masters.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">
+          <Link2 className="mt-0.5 size-4 shrink-0 text-sky-600" />
+          <div className="space-y-1">
+            {masters.map((m, i) =>
+              m && !m.broken ? (
+                <p key={m.productId ?? i}>
+                  {fullyLinked ? 'This listing has no stock of its own — it sells from' : 'Some variants sell from'} the
+                  stock of{' '}
+                  <Link to={`/inventory/products/${m.productId}`} className="font-medium underline">
+                    {m.productName}
+                  </Link>
+                  . Receive, count and adjust stock there.
+                </p>
+              ) : (
+                <p key={`broken-${i}`} className="text-destructive">
+                  The product this listing shares stock with is archived — orders for it won’t deduct. Use Share stock to
+                  pick another product.
+                </p>
+              )
+            )}
+          </div>
+        </div>
+      )}
+      {listings.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+          <Link2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <p>
+            Also sold as{' '}
+            {listings.map((l, i) => (
+              <span key={l.productId}>
+                {i > 0 && ', '}
+                <Link to={`/inventory/products/${l.productId}`} className="font-medium underline">
+                  {l.name}
+                </Link>{' '}
+                <span className="font-mono text-xs text-muted-foreground">({l.variants.map((v) => v.sku).join(', ')})</span>
+              </span>
+            ))}
+            {' '}— their orders deduct this product’s stock.
+          </p>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -192,26 +255,44 @@ export function ProductDetailPage() {
                     <TableCell className="text-right">{formatCurrency(variant.costPrice)}</TableCell>
                     <TableCell className="text-center font-medium">
                       {variant.totalQuantity ?? 0}
+                      {variant.stockLink?.variant && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          shared · {variant.linkedStock?.sku ?? 'archived'}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(variant.stockValue)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'receive', variant })}>
-                          <PackagePlus className="size-4" />
-                          Receive
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'deduct', variant })}>
-                          <PackageMinus className="size-4" />
-                          Deduct
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'adjust', variant })}>
-                          <SlidersHorizontal className="size-4" />
-                          Adjust
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'transfer', variant })}>
-                          <ArrowLeftRight className="size-4" />
-                          Transfer
-                        </Button>
+                        {variant.stockLink?.variant ? (
+                          variant.linkedStock?.productId && (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/inventory/products/${variant.linkedStock.productId}`}>
+                                <Link2 className="size-4" />
+                                {variant.linkedStock.sku}
+                              </Link>
+                            </Button>
+                          )
+                        ) : (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'receive', variant })}>
+                              <PackagePlus className="size-4" />
+                              Receive
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'deduct', variant })}>
+                              <PackageMinus className="size-4" />
+                              Deduct
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'adjust', variant })}>
+                              <SlidersHorizontal className="size-4" />
+                              Adjust
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setStockDialog({ kind: 'transfer', variant })}>
+                              <ArrowLeftRight className="size-4" />
+                              Transfer
+                            </Button>
+                          </>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => setLabelVariants([variant._id ?? ''])} aria-label="Print label">
                           <Tag className="size-4" />
                         </Button>
@@ -328,6 +409,14 @@ export function ProductDetailPage() {
           onOpenChange={(o) => !o && setStockDialog(null)}
           product={product}
           variant={stockDialog.variant}
+        />
+      )}
+      {linkOpen && (
+        <LinkStockDialog
+          key={`link-${product._id}`}
+          open
+          onOpenChange={(o) => !o && setLinkOpen(false)}
+          product={product}
         />
       )}
       {labelVariants && (

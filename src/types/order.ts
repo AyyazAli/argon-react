@@ -28,6 +28,8 @@ export interface OrderCatalogVariant {
   label: string
   sellingPrice?: number
   onHand: number
+  /** Linked listing: SKU of the item whose stock it sells from (onHand is that item's). */
+  sharedWith?: string
 }
 
 export interface OrderCatalogProduct {

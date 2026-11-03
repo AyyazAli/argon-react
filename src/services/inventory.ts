@@ -9,6 +9,7 @@ import type {
   LowStockItem,
   ValuationReport,
   ProductInput,
+  StockLinkInput,
   ReceiptInput,
   AdjustmentInput,
   MovementQuery,
@@ -54,6 +55,11 @@ export const inventoryApi = {
 
   updateProduct: async (id: string, data: ProductInput): Promise<ApiResponse<InventoryProduct>> => {
     const response = await api.put<ApiResponse<InventoryProduct>>(`${BASE}/products/${id}`, data)
+    return response.data
+  },
+
+  setStockLinks: async (id: string, data: StockLinkInput): Promise<ApiResponse<InventoryProduct>> => {
+    const response = await api.put<ApiResponse<InventoryProduct>>(`${BASE}/products/${id}/stock-links`, data)
     return response.data
   },
 

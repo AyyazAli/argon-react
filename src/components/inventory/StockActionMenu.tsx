@@ -10,6 +10,7 @@ import {
   Pencil,
   Archive,
   Eye,
+  Link2,
 } from 'lucide-react'
 import {
   Button,
@@ -56,6 +57,9 @@ export function StockActionMenu({
 }: StockActionMenuProps) {
   const navigate = useNavigate()
   const isAdmin = useIsInventoryAdmin()
+  // A linked listing holds no stock: it is received / counted on its master.
+  const active = product.variants.filter((v) => v.status !== 'archived')
+  const sharesStock = active.length > 0 && active.every((v) => v.stockLink?.variant)
 
   return (
     <DropdownMenu>
@@ -73,22 +77,31 @@ export function StockActionMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel>Stock</DropdownMenuLabel>
-        <DropdownMenuItem onClick={onReceive}>
-          <PackagePlus className="size-4" />
-          Receive stock
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onDeduct}>
-          <PackageMinus className="size-4" />
-          Deduct stock
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onAdjust}>
-          <SlidersHorizontal className="size-4" />
-          Adjust / correct
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onTransfer}>
-          <ArrowLeftRight className="size-4" />
-          Transfer to warehouse
-        </DropdownMenuItem>
+        {sharesStock ? (
+          <DropdownMenuItem disabled>
+            <Link2 className="size-4" />
+            Uses another product’s stock
+          </DropdownMenuItem>
+        ) : (
+          <>
+            <DropdownMenuItem onClick={onReceive}>
+              <PackagePlus className="size-4" />
+              Receive stock
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDeduct}>
+              <PackageMinus className="size-4" />
+              Deduct stock
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onAdjust}>
+              <SlidersHorizontal className="size-4" />
+              Adjust / correct
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onTransfer}>
+              <ArrowLeftRight className="size-4" />
+              Transfer to warehouse
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuItem onClick={() => navigate('/inventory/scan')}>
           <ScanLine className="size-4" />
           Open scanner

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores'
 import { ACCESS } from '@/lib/roles'
 import type {
   ProductInput,
+  StockLinkInput,
   ReceiptInput,
   AdjustmentInput,
   MovementQuery,
@@ -70,6 +71,20 @@ export function useUpdateProduct() {
       toast.success('Product updated successfully')
     },
     onError: (e) => toast.error(errMsg(e, 'Failed to update product')),
+  })
+}
+
+/** Link / unlink a product's variants to another product's stock (linked listings). */
+export function useSetStockLinks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: StockLinkInput }) => inventoryApi.setStockLinks(id, data),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ROOT })
+      qc.invalidateQueries({ queryKey: ['orderCatalog'] })
+      toast.success(res.message || 'Stock link saved')
+    },
+    onError: (e) => toast.error(errMsg(e, 'Failed to link stock')),
   })
 }
 

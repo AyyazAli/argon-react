@@ -20,10 +20,36 @@ export interface Variant {
   reorderPoint?: number
   stock: StockEntry[]
   status?: 'active' | 'archived'
+  /** Linked listing: sells from this master variant's stock (holds none itself). */
+  stockLink?: { product: string; variant: string }
   // Computed server-side (present on read):
   totalQuantity?: number
   stockValue?: number
   isLowStock?: boolean
+  /** Master stock of a linked variant; `broken` when the master is archived. */
+  linkedStock?: LinkedStock
+}
+
+export interface LinkedStock {
+  productId?: string
+  productName?: string
+  variantId?: string
+  sku?: string
+  label?: string
+  quantity?: number
+  broken?: boolean
+}
+
+/** A product that sells from another product's stock (GET /products/:id). */
+export interface LinkedListing {
+  productId: string
+  name: string
+  variants: Array<{ sku: string; masterVariantId: string }>
+}
+
+export interface StockLinkInput {
+  masterProductId?: string
+  links: Array<{ variantId: string; masterVariantId: string | null }>
 }
 
 export interface ProductCategoryRef {
@@ -53,6 +79,10 @@ export interface InventoryProduct {
   totalStock?: number
   totalValue?: number
   lowStock?: boolean
+  /** Some variant is a linked listing. */
+  isLinkedListing?: boolean
+  /** Detail only: products selling from this product's stock. */
+  linkedListings?: LinkedListing[]
 }
 
 export interface ProductCategory {
@@ -134,6 +164,8 @@ export interface LookupResult {
   totalQuantity: number
   isLowStock: boolean
   stock: StockEntry[]
+  /** Set when the scanned code was a linked listing; the result is its master. */
+  linkedFrom?: { productName: string; sku: string }
 }
 
 // ---- Scan session batch ----

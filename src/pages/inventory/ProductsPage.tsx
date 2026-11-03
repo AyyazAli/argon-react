@@ -282,7 +282,12 @@ export function ProductsPage() {
                         <TableCell className="text-muted-foreground">
                           {product.supplier?.name || '-'}
                         </TableCell>
-                        <TableCell className="text-center font-medium">{product.totalStock ?? 0}</TableCell>
+                        <TableCell className="text-center font-medium">
+                          {product.totalStock ?? 0}
+                          {product.isLinkedListing && (
+                            <span className="block text-xs font-normal text-muted-foreground">shared stock</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(product.totalValue)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={product.status === 'active' ? 'success' : 'secondary'}>
