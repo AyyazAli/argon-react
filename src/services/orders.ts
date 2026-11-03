@@ -1,5 +1,5 @@
 import api from '@/lib/api'
-import type { Order, OrderStats, City, ApiResponse, PrintFileResult } from '@/types'
+import type { Order, OrderStats, City, ApiResponse, PrintFileResult, OrderCatalogProduct } from '@/types'
 
 export const ordersApi = {
   // Fetch all orders
@@ -221,6 +221,12 @@ export const ordersApi = {
       params: { file: fileName },
       responseType: 'blob',
     })
+    return response.data
+  },
+
+  // Inventory items for the order product / variant picker
+  getCatalog: async (): Promise<ApiResponse<OrderCatalogProduct[]>> => {
+    const response = await api.get<ApiResponse<OrderCatalogProduct[]>>('/api/argon/orders/catalog')
     return response.data
   },
 

@@ -13,9 +13,12 @@ function errMsg(error: unknown, fallback: string): string {
 }
 
 /** Toast for orders held back from printing because stock isn't available. */
-export function notifyPrintBlocked(blocked: PrintBlockedOrder[] | undefined) {
+export function notifyPrintBlocked(blocked: PrintBlockedOrder[] | undefined, printed = 0) {
   if (!blocked?.length) return
-  toast.warning(`${blocked.length} order(s) not sent to printing — stock not available`, {
+  const title = printed
+    ? `${printed} order(s) sent to printing · ${blocked.length} held back (stock not available)`
+    : `No orders sent to printing — ${blocked.length} held back (stock not available)`
+  toast.warning(title, {
     description: blocked.slice(0, 3).map((b) => b.message).join('\n') + (blocked.length > 3 ? `\n…and ${blocked.length - 3} more` : ''),
     duration: 12000,
   })
@@ -134,8 +137,9 @@ export function useGeneratePrintfileFromCSV() {
         saveAs(blob, `print-file-csv-${new Date().toISOString().split('T')[0]}.xlsx`)
       }
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      if (data.data.orders?.length) toast.success(`Print file generated for ${data.data.orders.length} order(s)`)
-      notifyPrintBlocked(data.data.blocked)
+      const printed = data.data.orders?.length ?? 0
+      if (data.data.blocked?.length) notifyPrintBlocked(data.data.blocked, printed)
+      else if (printed) toast.success(`Print file generated for ${printed} order(s)`)
       notifyInventory(inventoryOf(data.data.orders || []))
     },
     onError: (error: Error) => toast.error(errMsg(error, 'Error generating print file from CSV')),
@@ -260,8 +264,9 @@ export function useBookOrders() {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       if (variables.company === 'printfile') {
         const blocked = 'blocked' in data.data ? data.data.blocked : undefined
-        if (Array.isArray(orders) && orders.length) toast.success(`Print file generated for ${orders.length} order(s)`)
-        notifyPrintBlocked(blocked)
+        const printed = Array.isArray(orders) ? orders.length : 0
+        if (blocked?.length) notifyPrintBlocked(blocked, printed)
+        else if (printed) toast.success(`Print file generated for ${printed} order(s)`)
       } else {
         toast.success(`Orders booked successfully via ${variables.company}`)
       }
@@ -350,6 +355,16 @@ export function useUpdateOrder() {
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update order')
     },
+  })
+}
+
+/** Inventory catalogue for the order product picker; fetched only while the dialog is open. */
+export function useOrderCatalog(enabled = true) {
+  return useQuery({
+    queryKey: ['orderCatalog'],
+    queryFn: async () => (await ordersApi.getCatalog()).data ?? [],
+    enabled,
+    staleTime: 1000 * 60 * 5,
   })
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { formatDate, cn as cx } from '@/lib/utils'
@@ -8,6 +8,7 @@ import {
   useAddProduct,
   useEditProduct,
   useDeleteProduct,
+  useOrderCatalog,
 } from '@/hooks'
 import {
   Dialog,
@@ -29,7 +30,9 @@ import {
 } from '@/components/ui/table'
 import { Label } from '@/components/ui/label'
 import { TrackingModal } from './TrackingModal'
-import type { Order, Product } from '@/types'
+import { InventoryItemPicker } from './InventoryItemPicker'
+import { lineNameFor, resolveLine, type LineMatch } from '@/lib/orderItemMatch'
+import type { Order, Product, OrderCatalogProduct, OrderCatalogVariant } from '@/types'
 import {
   Pencil,
   X,
@@ -160,6 +163,10 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
   const [isEditing, setIsEditing] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isAddingProduct, setIsAddingProduct] = useState(false)
+  // Inventory item chosen in the product dialog; undefined = not touched, so
+  // the link is derived from the line's SKU / name (as stock deduction does).
+  const [pick, setPick] = useState<{ productId: string; variantId: string | null } | undefined>(undefined)
+  const [variantError, setVariantError] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [trackingModal, setTrackingModal] = useState<{ trackingId: string; company: string } | null>(null)
 
@@ -190,6 +197,42 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
       color: '', mobileModel: '', printingSide: '', language: '', picture: '',
     },
   })
+
+  const catalogQuery = useOrderCatalog(isAddingProduct || !!editingProduct)
+  const catalog = catalogQuery.data ?? []
+  const watchedName = useWatch({ control: productForm.control, name: 'name' })
+  const pickedProduct = pick ? catalog.find((p) => p._id === pick.productId) ?? null : null
+  const itemMatch: LineMatch | null = pick
+    ? pickedProduct && {
+        product: pickedProduct,
+        variant: pickedProduct.variants.length === 1
+          ? pickedProduct.variants[0]
+          : pickedProduct.variants.find((v) => v._id === pick.variantId) ?? null,
+      }
+    : resolveLine(catalog, {
+        name: watchedName,
+        sku: editingProduct?.sku,
+        externalVariantId: editingProduct?.externalVariantId,
+      })
+
+  const applyItem = (product: OrderCatalogProduct, variant: OrderCatalogVariant | null) => {
+    setPick({ productId: product._id, variantId: variant?._id ?? null })
+    setVariantError(false)
+    productForm.setValue('name', lineNameFor(product, variant), { shouldValidate: true, shouldDirty: true })
+    const price = productForm.getValues('price')
+    if ((!price || Number.isNaN(price)) && variant?.sellingPrice) {
+      productForm.setValue('price', variant.sellingPrice, { shouldDirty: true })
+    }
+  }
+
+  /** Inventory link sent with the line; false = a variant still has to be picked. */
+  const inventoryLink = (): { sku?: string } | false => {
+    if (itemMatch && !itemMatch.variant) {
+      setVariantError(true)
+      return false
+    }
+    return itemMatch?.variant ? { sku: itemMatch.variant.sku } : {}
+  }
 
   // Dynamic product columns: include a field if any product has a non-empty value
   const productColumns = PRODUCT_FIELD_ORDER.filter((key) => {
@@ -225,7 +268,9 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
   }
 
   const handleAddProduct = (data: ProductFormData) => {
-    addProduct.mutate({ orderId: order._id, product: data }, {
+    const link = inventoryLink()
+    if (!link) return
+    addProduct.mutate({ orderId: order._id, product: { ...data, ...link } }, {
       onSuccess: () => {
         setIsAddingProduct(false)
         productForm.reset()
@@ -235,7 +280,9 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
 
   const handleEditProduct = (data: ProductFormData) => {
     if (!editingProduct?._id) return
-    editProduct.mutate({ orderId: order._id, productId: editingProduct._id, product: data }, {
+    const link = inventoryLink()
+    if (!link) return
+    editProduct.mutate({ orderId: order._id, productId: editingProduct._id, product: { ...data, ...link } }, {
       onSuccess: () => {
         setEditingProduct(null)
         productForm.reset()
@@ -252,6 +299,8 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
   const startEditProduct = (product: Product) => {
     setIsAddingProduct(false)
     setEditingProduct(product)
+    setPick(undefined)
+    setVariantError(false)
     productForm.reset({
       name: product.name, price: product.price, qty: product.qty,
       size: product.size || '', nameToPrint: product.nameToPrint || '',
@@ -265,6 +314,8 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
   const startAddProduct = () => {
     setEditingProduct(null)
     setIsAddingProduct(true)
+    setPick(undefined)
+    setVariantError(false)
     productForm.reset({
       name: '', price: 0, qty: 1, size: '',
       nameToPrint: '', nameOnOtherSide: '', giftWrap: '', refills: '',
@@ -567,6 +618,16 @@ export function OrderDetailsModal({ order, open, onClose }: OrderDetailsModalPro
           <DialogHeader>
             <DialogTitle>{isAddingProduct ? 'Add Product' : 'Edit Product'}</DialogTitle>
           </DialogHeader>
+
+          <InventoryItemPicker
+            catalog={catalog}
+            loading={catalogQuery.isLoading}
+            product={itemMatch?.product ?? null}
+            variant={itemMatch?.variant ?? null}
+            variantError={variantError}
+            onSelectProduct={(p) => applyItem(p, p.variants.length === 1 ? p.variants[0] : null)}
+            onSelectVariant={(v) => itemMatch && applyItem(itemMatch.product, v)}
+          />
 
           <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {PRODUCT_FORM_FIELDS.map((field) => (

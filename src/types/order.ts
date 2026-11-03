@@ -19,6 +19,24 @@ export interface Product {
   externalVariantId?: string
 }
 
+/** Inventory item offered by the order editor's product / variant picker (GET /orders/catalog). */
+export interface OrderCatalogVariant {
+  _id: string
+  sku: string
+  externalVariantId?: string
+  /** Attribute values joined by " / " — what stock matching expects after " - " in a line name. */
+  label: string
+  sellingPrice?: number
+  onHand: number
+}
+
+export interface OrderCatalogProduct {
+  _id: string
+  name: string
+  imageUrl?: string
+  variants: OrderCatalogVariant[]
+}
+
 export interface Billing {
   first_name: string
   last_name: string

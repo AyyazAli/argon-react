@@ -114,7 +114,7 @@ export function OrdersPage() {
 
   const [isGeneratingLabels, setIsGeneratingLabels] = useState(false)
   const [manualCompany, setManualCompany] = useState('')
-  const [printBlocked, setPrintBlocked] = useState<PrintBlockedOrder[]>([])
+  const [printResult, setPrintResult] = useState<{ blocked: PrintBlockedOrder[]; printed: number; file: string | null } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedCompany, setSelectedCompany] = useState<CourierCompany | ''>('')
@@ -232,7 +232,7 @@ export function OrdersPage() {
       {
         onSuccess: (data) => {
           if (selectedCompany === 'printfile' && 'blocked' in data.data && data.data.blocked?.length) {
-            setPrintBlocked(data.data.blocked)
+            setPrintResult({ blocked: data.data.blocked, printed: data.data.orders?.length ?? 0, file: data.data.file })
           }
           if (selectedCompany === 'trax') {
             const orders = Array.isArray(data.data) ? data.data : (data.data as { orders?: Order[] }).orders || []
@@ -263,7 +263,9 @@ export function OrdersPage() {
     if (file) {
       generateFromCSV.mutate(file, {
         onSuccess: (data) => {
-          if (data.data.blocked?.length) setPrintBlocked(data.data.blocked)
+          if (data.data.blocked?.length) {
+            setPrintResult({ blocked: data.data.blocked, printed: data.data.orders?.length ?? 0, file: data.data.file })
+          }
         },
       })
       e.target.value = ''
@@ -653,8 +655,8 @@ export function OrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {printBlocked.length > 0 && (
-        <PrintBlockedDialog blocked={printBlocked} onClose={() => setPrintBlocked([])} />
+      {printResult && (
+        <PrintBlockedDialog {...printResult} onClose={() => setPrintResult(null)} />
       )}
 
       {/* Trax Receiving Sheet Dialog */}
