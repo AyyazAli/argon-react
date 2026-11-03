@@ -11,6 +11,7 @@ import {
   Tag,
   ScanLine,
   Store,
+  RefreshCw,
 } from 'lucide-react'
 import {
   Card,
@@ -43,6 +44,7 @@ import {
   ProductFormDialog,
   ImportCsvDialog,
   ShopifyImportDialog,
+  ShopifySyncDialog,
   ProductThumb,
   PrintLabelsDialog,
   ReceiveStockDialog,
@@ -79,6 +81,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<InventoryProduct | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [shopifyOpen, setShopifyOpen] = useState(false)
+  const [syncOpen, setSyncOpen] = useState(false)
   const [stockDialog, setStockDialog] = useState<StockDialog>(null)
   const [labelTarget, setLabelTarget] = useState<LabelTarget>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
@@ -156,6 +159,10 @@ export function ProductsPage() {
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload className="size-4" />
                 Import
+              </Button>
+              <Button variant="outline" onClick={() => setSyncOpen(true)}>
+                <RefreshCw className="size-4" />
+                Sync from Shopify
               </Button>
               <Button variant="outline" onClick={() => setShopifyOpen(true)}>
                 <Store className="size-4" />
@@ -338,6 +345,7 @@ export function ProductsPage() {
       )}
       {importOpen && <ImportCsvDialog open onOpenChange={(o) => !o && setImportOpen(false)} />}
       {shopifyOpen && <ShopifyImportDialog open onOpenChange={(o) => !o && setShopifyOpen(false)} />}
+      {syncOpen && <ShopifySyncDialog open onOpenChange={(o) => !o && setSyncOpen(false)} />}
       {effectiveLabelTarget && (
         <PrintLabelsDialog
           key={effectiveLabelTarget.key}

@@ -127,6 +127,21 @@ export function useShopifyImport() {
   })
 }
 
+/** Preview (dryRun) or run the incremental Shopify sync (new products / variants at 0 stock). */
+export function useShopifySync() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { dryRun: boolean }) => inventoryApi.syncFromShopify(input),
+    onSuccess: (res) => {
+      if (res.data.dryRun) return
+      qc.invalidateQueries({ queryKey: ROOT })
+      qc.invalidateQueries({ queryKey: ['orderCatalog'] })
+      toast.success(res.message || 'Synced from Shopify')
+    },
+    onError: (e) => toast.error(errMsg(e, 'Shopify sync failed')),
+  })
+}
+
 // ---- Categories ----
 export function useProductCategories() {
   return useQuery({

@@ -15,6 +15,7 @@ import type {
   MovementQuery,
   ProductQuery,
   ShopifyImportResult,
+  ShopifySyncResult,
   LookupResult,
   BatchInput,
   BatchResult,
@@ -97,6 +98,11 @@ export const inventoryApi = {
     includeStock: boolean
   }): Promise<ApiResponse<ShopifyImportResult>> => {
     const response = await api.post(`${BASE}/products/import/shopify`, input)
+    return response.data
+  },
+
+  syncFromShopify: async (input: { dryRun: boolean }): Promise<ApiResponse<ShopifySyncResult>> => {
+    const response = await api.post(`${BASE}/products/sync/shopify`, input)
     return response.data
   },
 

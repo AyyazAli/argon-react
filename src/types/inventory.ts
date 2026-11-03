@@ -366,6 +366,23 @@ export interface ShopifyImportResult {
   sessionId?: string
 }
 
+/** POST /products/sync/shopify — adds what the portal is missing, restores lost Shopify ids. */
+export interface ShopifySyncResult {
+  store: string
+  business: string
+  dryRun: boolean
+  shopifyProducts: number
+  shopifyVariants: number
+  productsToCreate: number
+  variantsToCreate: number
+  newProducts: Array<{ name: string; variants: string[] }>
+  variantsAdded: Array<{ product: string; sku: string }>
+  linked: Array<{ product: string; sku: string; via: string }>
+  flagged: Array<{ product: string; shopifySku: string; sku: string; reason: string }>
+  skipped: Array<{ product: string; sku: string; reason: string }>
+  warnings: string[]
+}
+
 // ---- Settings ----
 /** When order stock is deducted: on dispatch (default) or when the print file is generated. */
 export type DeductOn = 'dispatch' | 'printing'
